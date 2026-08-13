@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import ReactQueryProvider from "@/providers/react-query";
 
 import { getTenantStore } from "@/lib/tentat";
+import Footer from "@/components/common/footer";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -46,6 +47,8 @@ export default async function RootLayout({
       >
         <ReactQueryProvider>
           <main className="flex-1">{children}</main>
+
+          <Footer />
         </ReactQueryProvider>
 
         <Toaster position="top-center" />
