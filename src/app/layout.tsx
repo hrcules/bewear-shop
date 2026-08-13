@@ -42,8 +42,6 @@ export default function RootLayout({
       >
         <ReactQueryProvider>
           <main className="flex-1">{children}</main>
-
-          <Footer />
         </ReactQueryProvider>
 
         <Analytics />
