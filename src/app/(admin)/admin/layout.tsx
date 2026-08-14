@@ -3,13 +3,17 @@ import ReactQueryProvider from "@/providers/react-query";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm"; // ✅ Importação para a consulta do Drizzle
 
 import NotificationBell from "@/components/common/notification-bell";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { getTenantStore } from "@/lib/tentat";
+import { db } from "@/db"; // ✅ Importação do banco de dados
+import { storeTable } from "@/db/schema"; // ✅ Importação da tabela da loja
 
 import { MobileSidebar } from "./components/mobile-sidebar";
+import { AcceptTermsDialog } from "./components/accept-terms-dialog";
 
 export const metadata: Metadata = {
   title: "admin",
@@ -41,10 +45,31 @@ export default async function AdminLayout({
     redirect("/");
   }
 
+  // ✅ A SERVER ACTION: Função que roda apenas no backend para salvar o aceite
+  async function handleAcceptTerms(storeId: string) {
+    "use server"; // Isso transforma a função em uma Server Action
+
+    await db
+      .update(storeTable)
+      .set({ termsAcceptedAt: new Date() })
+      .where(eq(storeTable.id, storeId));
+  }
+
+  // ✅ A TRAVA: Verifica se a loja ainda não aceitou os termos
+  const needsToAcceptTerms = !store.termsAcceptedAt;
+
   const colorPrimary = store.colorPrimary || "#8B5CF6";
 
   return (
     <ReactQueryProvider>
+      {/* ✅ SE PRECISAR ACEITAR: Renderiza o Modal por cima de toda a interface */}
+      {needsToAcceptTerms && (
+        <AcceptTermsDialog
+          storeId={store.id}
+          acceptAction={handleAcceptTerms}
+        />
+      )}
+
       <div
         className="flex min-h-screen flex-col md:flex-row"
         style={

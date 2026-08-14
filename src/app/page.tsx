@@ -612,12 +612,12 @@ export default function LandingPage() {
               reservados.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="hover:text-primary">
+              <Link href="/termos" className="hover:text-primary">
                 Termos de Uso
-              </a>
-              <a href="#" className="hover:text-primary">
+              </Link>
+              <Link href="/privacidade" className="hover:text-primary">
                 Política de Privacidade
-              </a>
+              </Link>
             </div>
           </div>
         </div>
