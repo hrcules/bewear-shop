@@ -95,6 +95,7 @@ export const storeTable = pgTable("store", {
   stripeSecretKey: text("stripe_secret_key"),
   stripeWebhookSecret: text("stripe_webhook_secret"),
   mpAccessToken: text("mp_access_token"),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
 
   ownerId: text("owner_id")
     .notNull()
