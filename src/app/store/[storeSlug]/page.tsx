@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { and, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import Image from "next/image";
 
@@ -14,6 +15,46 @@ import {
 } from "@/db/schema";
 import { getTenantStore } from "@/lib/tentat";
 
+// ==========================================
+// 🚀 GERAÇÃO DO CARD PARA WHATSAPP / INSTAGRAM (HOME)
+// ==========================================
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await getTenantStore();
+
+  if (!store) {
+    return { title: "Loja não encontrada" };
+  }
+
+  return {
+    title: store.name,
+    description: `Bem-vindo à ${store.name}. Confira nossos produtos e ofertas exclusivas!`,
+    openGraph: {
+      title: store.name,
+      description: `Confira nossas novidades e ofertas! 🛍️`,
+      images: [
+        {
+          // O WhatsApp vai tentar puxar o banner. Se não tiver, puxa só o texto.
+          url: store.banner1DesktopUrl || store.banner1MobileUrl || "",
+          width: 1200,
+          height: 630,
+          alt: `Banner da loja ${store.name}`,
+        },
+      ],
+      locale: "pt_BR",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: store.name,
+      description: `Confira nossas novidades e ofertas! 🛍️`,
+      images: [store.banner1DesktopUrl || store.banner1MobileUrl || ""],
+    },
+  };
+}
+
+// ==========================================
+// COMPONENTE PRINCIPAL DA HOME
+// ==========================================
 export default async function Home() {
   const store = await getTenantStore();
 

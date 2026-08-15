@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { and, eq } from "drizzle-orm";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -6,19 +7,76 @@ import Header from "@/components/common/header/index";
 import { ProductList } from "@/components/common/product-list";
 import { db } from "@/db";
 import { productTable, productVariantTable } from "@/db/schema";
+import { formatCentsToBRL } from "@/helpers/money"; // Importação adicionada para formatar o preço no SEO
+import { getTenantStore } from "@/lib/tentat";
 
 import ProductActions from "./components/product-actions";
 import VariantSelector from "./components/variant-selector";
 
-import { getTenantStore } from "@/lib/tentat";
-
 interface ProductPageProps {
   params: Promise<{
+    storeSlug?: string;
     slug: string;
     productSlug: string;
   }>;
 }
 
+// ==========================================
+// 🚀 GERAÇÃO DO CARD PARA WHATSAPP / INSTAGRAM
+// ==========================================
+export async function generateMetadata({
+  params,
+}: ProductPageProps): Promise<Metadata> {
+  const { productSlug } = await params;
+
+  // Busca apenas os dados necessários para o SEO (mais rápido)
+  const productVariant = await db.query.productVariantTable.findFirst({
+    where: eq(productVariantTable.slug, productSlug),
+    with: {
+      product: true,
+    },
+  });
+
+  if (!productVariant) {
+    return {
+      title: "Produto não encontrado",
+    };
+  }
+
+  // Formata o preço e monta os textos do Card
+  const formattedPrice = formatCentsToBRL(productVariant.priceInCents);
+  const ogTitle = `${productVariant.product.name} - ${productVariant.name}`;
+  const ogDescription = `Por apenas ${formattedPrice} 🛍️. Confira agora!`;
+
+  return {
+    title: ogTitle,
+    description: ogDescription,
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      images: [
+        {
+          url: productVariant.imageUrl, // A foto da variação vai aparecer grandona!
+          width: 1200,
+          height: 630,
+          alt: ogTitle,
+        },
+      ],
+      locale: "pt_BR",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: ogTitle,
+      description: ogDescription,
+      images: [productVariant.imageUrl],
+    },
+  };
+}
+
+// ==========================================
+// COMPONENTE DA PÁGINA
+// ==========================================
 const ProductPage = async ({ params }: ProductPageProps) => {
   const { slug, productSlug } = await params;
 
