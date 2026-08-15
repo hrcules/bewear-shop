@@ -15,9 +15,6 @@ import {
 } from "@/db/schema";
 import { getTenantStore } from "@/lib/tentat";
 
-// ==========================================
-// 🚀 GERAÇÃO DO CARD PARA WHATSAPP / INSTAGRAM (HOME)
-// ==========================================
 export async function generateMetadata(): Promise<Metadata> {
   const store = await getTenantStore();
 
@@ -25,29 +22,36 @@ export async function generateMetadata(): Promise<Metadata> {
     return { title: "Loja não encontrada" };
   }
 
+  const ogTitle = store.name;
+  const ogDescription = `Bem-vindo à ${store.name}. Confira nossos produtos e ofertas exclusivas!`;
+
+  const bannerUrl =
+    store.banner1DesktopUrl || store.banner1MobileUrl || undefined;
+
   return {
-    title: store.name,
-    description: `Bem-vindo à ${store.name}. Confira nossos produtos e ofertas exclusivas!`,
+    title: ogTitle,
+    description: ogDescription,
     openGraph: {
-      title: store.name,
-      description: `Confira nossas novidades e ofertas! 🛍️`,
-      images: [
-        {
-          // O WhatsApp vai tentar puxar o banner. Se não tiver, puxa só o texto.
-          url: store.banner1DesktopUrl || store.banner1MobileUrl || "",
-          width: 1200,
-          height: 630,
-          alt: `Banner da loja ${store.name}`,
-        },
-      ],
+      title: ogTitle,
+      description: ogDescription,
       locale: "pt_BR",
       type: "website",
+      ...(bannerUrl && {
+        images: [
+          {
+            url: bannerUrl,
+            width: 1200,
+            height: 630,
+            alt: `Banner da loja ${store.name}`,
+          },
+        ],
+      }),
     },
     twitter: {
       card: "summary_large_image",
-      title: store.name,
-      description: `Confira nossas novidades e ofertas! 🛍️`,
-      images: [store.banner1DesktopUrl || store.banner1MobileUrl || ""],
+      title: ogTitle,
+      description: ogDescription,
+      ...(bannerUrl && { images: [bannerUrl] }),
     },
   };
 }
