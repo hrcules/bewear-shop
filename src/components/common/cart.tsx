@@ -6,8 +6,10 @@ import Link from "next/link";
 import { formatCentsToBRL } from "@/helpers/money";
 import { useCart } from "@/hooks/queries/use-cart";
 
+import Image from "next/image";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
+import { Separator } from "../ui/separator";
 import {
   Sheet,
   SheetClose,
@@ -17,8 +19,6 @@ import {
   SheetTrigger,
 } from "../ui/sheet";
 import CartItem from "./cart-item";
-import { Separator } from "../ui/separator";
-import Image from "next/image";
 
 const Cart = () => {
   const { data: cart } = useCart();
@@ -81,6 +81,7 @@ const Cart = () => {
                         productVariantPriceInCents={
                           item.productVariant.priceInCents
                         }
+                        productVariantSize={item.productVariant.size}
                         quantity={item.quantity}
                       />
                     ))}
