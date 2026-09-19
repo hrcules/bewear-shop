@@ -19,39 +19,48 @@ export async function generateMetadata(): Promise<Metadata> {
   const store = await getTenantStore();
 
   if (!store) {
-    return { title: "Loja não encontrada" };
+    return {
+      title: "Loja não encontrada",
+    };
   }
 
-  const ogTitle = store.name;
-  const ogDescription = `Bem-vindo à ${store.name}. Confira nossos produtos e ofertas exclusivas!`;
+  const title = store.name;
+
+  const description = `Conheça a ${store.name}. Confira nossos produtos, novidades e ofertas disponíveis na loja online.`;
 
   const bannerUrl =
     store.banner1DesktopUrl || store.banner1MobileUrl || undefined;
 
   return {
-    title: ogTitle,
-    description: ogDescription,
+    title,
+    description,
+
     openGraph: {
-      title: ogTitle,
-      description: ogDescription,
+      title,
+      description,
       locale: "pt_BR",
       type: "website",
+      siteName: store.name,
+
       ...(bannerUrl && {
         images: [
           {
             url: bannerUrl,
-            width: 1200,
-            height: 630,
-            alt: `Banner da loja ${store.name}`,
+            width: 1352,
+            height: 800,
+            alt: `${store.name} - Loja Online`,
           },
         ],
       }),
     },
+
     twitter: {
       card: "summary_large_image",
-      title: ogTitle,
-      description: ogDescription,
-      ...(bannerUrl && { images: [bannerUrl] }),
+      title,
+      description,
+      ...(bannerUrl && {
+        images: [bannerUrl],
+      }),
     },
   };
 }
