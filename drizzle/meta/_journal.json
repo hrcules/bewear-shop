@@ -57,6 +57,13 @@
       "when": 1785796283677,
       "tag": "0007_brown_mockingbird",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790037498593,
+      "tag": "0008_mercadopago_oauth",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -35,6 +35,9 @@ const ConfirmationPage = async ({ searchParams }: ConfirmationPageProps) => {
     redirect("/");
   }
 
+  const store = await getTenantStore();
+  if (!store) redirect("/");
+
   let products = [];
   let subtotalInCents = 0;
   let shippingAddress = null;
@@ -49,7 +52,14 @@ const ConfirmationPage = async ({ searchParams }: ConfirmationPageProps) => {
       where: eq(shippingAddressTable.id, addressId),
     });
 
-    if (!variant || !address) {
+    if (
+      !variant ||
+      variant.product.storeId !== store.id ||
+      !address ||
+      address.userId !== session.user.id ||
+      !Number.isSafeInteger(Number(quantity)) ||
+      Number(quantity) <= 0
+    ) {
       redirect("/");
     }
 
@@ -67,7 +77,8 @@ const ConfirmationPage = async ({ searchParams }: ConfirmationPageProps) => {
     shippingAddress = address;
   } else {
     const cart = await db.query.cartTable.findFirst({
-      where: (cart, { eq }) => eq(cart.userId, session.user.id),
+      where: (cart) =>
+        and(eq(cart.userId, session.user.id), eq(cart.storeId, store.id)),
       with: {
         shippingAddress: true,
         items: {
@@ -100,8 +111,6 @@ const ConfirmationPage = async ({ searchParams }: ConfirmationPageProps) => {
     );
     shippingAddress = cart.shippingAddress;
   }
-
-  const store = await getTenantStore();
 
   // Caso o atributo não esteja definido por fallback, assume true
   const enableOnlinePayments = store?.enableOnlinePayments ?? true;
@@ -138,6 +147,7 @@ const ConfirmationPage = async ({ searchParams }: ConfirmationPageProps) => {
                   quantity={quantity ? Number(quantity) : undefined}
                   addressId={addressId}
                   enableOnlinePayments={enableOnlinePayments}
+                  checkoutProvider={store.checkoutProvider}
                 />
               </CardContent>
             </Card>

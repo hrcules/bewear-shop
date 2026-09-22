@@ -71,6 +71,7 @@ export async function sendCustomerReceiptEmail(
   shippingFormatted: string,
   totalPriceFormatted: string,
   enableOnlinePayments: boolean,
+  throwOnError = false,
 ) {
   try {
     const tableHtml = generateItemsTableHtml(
@@ -91,6 +92,7 @@ export async function sendCustomerReceiptEmail(
 
     const response = await fetch(BREVO_API_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(8000),
       headers: {
         accept: "application/json",
         "api-key": BREVO_API_KEY,
@@ -123,6 +125,7 @@ export async function sendCustomerReceiptEmail(
 
     console.log(`✅ Email de recibo enviado para o cliente ${customerEmail}`);
   } catch (error) {
+    if (throwOnError) throw new Error("Falha no envio do recibo.");
     console.error("❌ Erro ao enviar email para o cliente:", error);
   }
 }
@@ -136,6 +139,7 @@ export async function sendStoreOwnerNotificationEmail(
   shippingFormatted: string,
   totalPriceFormatted: string,
   enableOnlinePayments: boolean,
+  throwOnError = false,
 ) {
   try {
     const tableHtml = generateItemsTableHtml(
@@ -160,6 +164,7 @@ export async function sendStoreOwnerNotificationEmail(
 
     const response = await fetch(BREVO_API_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(8000),
       headers: {
         accept: "application/json",
         "api-key": BREVO_API_KEY,
@@ -192,6 +197,7 @@ export async function sendStoreOwnerNotificationEmail(
 
     console.log(`✅ Email de notificação enviado para o lojista ${ownerEmail}`);
   } catch (error) {
+    if (throwOnError) throw new Error("Falha no envio da notificação.");
     console.error("❌ Erro ao enviar email para o lojista:", error);
   }
 }

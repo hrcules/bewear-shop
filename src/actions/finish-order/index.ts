@@ -67,6 +67,9 @@ export const finishOrder = authenticatedAction<void, { orderId: string }>(
       throw new Error("Loja não encontrada");
     }
 
+    if (store.enableOnlinePayments && store.checkoutProvider === "mercadopago")
+      throw new Error("Use o novo checkout da loja.");
+
     const subtotalInCents = cart.items.reduce(
       (acc, item) => acc + item.productVariant.priceInCents * item.quantity,
       0,

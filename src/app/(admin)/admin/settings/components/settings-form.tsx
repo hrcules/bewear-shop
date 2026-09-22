@@ -61,6 +61,7 @@ interface SettingsFormProps {
     mpAccessToken: string | null;
     pixDiscountPercent: number;
     enableOnlinePayments: boolean;
+    checkoutProvider: string;
   };
 }
 
@@ -451,140 +452,143 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
           </CardContent>
         </Card>
 
-        {isOnlinePaymentsEnabled && (
-          <>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <LinkIcon className="h-5 w-5" /> Pagamentos (Cartão via
-                  Stripe)
-                </CardTitle>
-                <CardDescription>
-                  Conecte sua conta do Stripe para processar cartões de crédito
-                  de forma segura.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  name="stripePublicKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Chave Pública (Publishable Key)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="pk_test_..."
-                          {...field}
-                          value={field.value || ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  name="stripeSecretKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Chave Secreta (Secret Key)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="sk_test_..."
-                          {...field}
-                          value={field.value || ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  name="stripeWebhookSecret"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Segredo do Webhook (Webhook Secret)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="whsec_..."
-                          {...field}
-                          value={field.value || ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <p className="text-muted-foreground mt-1 text-[10px]">
-                        Configure seu Webhook no Stripe para apontar para:
-                        <code className="bg-muted ml-1 rounded px-1 py-0.5">
-                          {process.env.NEXT_PUBLIC_APP_URL}
-                          /api/stripe/webhook?storeId={initialData.id}
-                        </code>
-                      </p>
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
+        {isOnlinePaymentsEnabled &&
+          initialData.checkoutProvider !== "mercadopago" && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <LinkIcon className="h-5 w-5" /> Pagamentos (Cartão via
+                    Stripe)
+                  </CardTitle>
+                  <CardDescription>
+                    Conecte sua conta do Stripe para processar cartões de
+                    crédito de forma segura.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    name="stripePublicKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Chave Pública (Publishable Key)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="pk_test_..."
+                            {...field}
+                            value={field.value || ""}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="stripeSecretKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Chave Secreta (Secret Key)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Deixe vazio para manter a chave atual"
+                            {...field}
+                            value={field.value || ""}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="stripeWebhookSecret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Segredo do Webhook (Webhook Secret)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Deixe vazio para manter o segredo atual"
+                            {...field}
+                            value={field.value || ""}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <p className="text-muted-foreground mt-1 text-[10px]">
+                          Configure seu Webhook no Stripe para apontar para:
+                          <code className="bg-muted ml-1 rounded px-1 py-0.5">
+                            {process.env.NEXT_PUBLIC_APP_URL}
+                            /api/stripe/webhook?storeId={initialData.id}
+                          </code>
+                        </p>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-emerald-600">
-                  <QrCode className="h-5 w-5" /> Pagamentos (PIX via Mercado
-                  Pago)
-                </CardTitle>
-                <CardDescription>
-                  Gere QR Codes de PIX com aprovação instantânea e ofereça
-                  descontos.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  name="mpAccessToken"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Access Token (Produção)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="APP_USR-..."
-                          {...field}
-                          value={field.value || ""}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <p className="text-muted-foreground mt-1 text-[10px]">
-                        Gere este token no painel de desenvolvedores do Mercado
-                        Pago (Credenciais de Produção).
-                      </p>
-                    </FormItem>
-                  )}
-                />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-emerald-600">
+                    <QrCode className="h-5 w-5" /> Pagamentos (PIX via Mercado
+                    Pago)
+                  </CardTitle>
+                  <CardDescription>
+                    Gere QR Codes de PIX com aprovação instantânea e ofereça
+                    descontos.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    name="mpAccessToken"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Access Token (Produção)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Deixe vazio para manter o token atual"
+                            {...field}
+                            value={field.value || ""}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <p className="text-muted-foreground mt-1 text-[10px]">
+                          Gere este token no painel de desenvolvedores do
+                          Mercado Pago (Credenciais de Produção).
+                        </p>
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  name="pixDiscountPercent"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Desconto para PIX (%)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="Ex: 5 para 5% de desconto"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <p className="text-muted-foreground mt-1 text-[10px]">
-                        Incentive vendas à vista oferecendo um desconto
-                        automático no checkout (Deixe 0 para nenhum).
-                      </p>
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-          </>
-        )}
+                  <FormField
+                    name="pixDiscountPercent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Desconto para PIX (%)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            placeholder="Ex: 5 para 5% de desconto"
+                            {...field}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <p className="text-muted-foreground mt-1 text-[10px]">
+                          Incentive vendas à vista oferecendo um desconto
+                          automático no checkout (Deixe 0 para nenhum).
+                        </p>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </>
+          )}
 
         <Card>
           <CardHeader>

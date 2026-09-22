@@ -122,12 +122,16 @@ export const updateStoreSettingsAction = tenantOwnerAction<
       fixedShippingFeeInCents,
       freeShippingThresholdInCents,
       stripePublicKey,
-      stripeSecretKey,
-      stripeWebhookSecret,
-      mpAccessToken,
-      pixDiscountPercent: pixDiscountPercentStr
-        ? parseInt(pixDiscountPercentStr)
-        : 0,
+      stripeSecretKey: stripeSecretKey?.trim() || store.stripeSecretKey,
+      stripeWebhookSecret:
+        stripeWebhookSecret?.trim() || store.stripeWebhookSecret,
+      mpAccessToken: mpAccessToken?.trim() || store.mpAccessToken,
+      pixDiscountPercent:
+        store.checkoutProvider === "mercadopago"
+          ? 0
+          : pixDiscountPercentStr
+            ? parseInt(pixDiscountPercentStr)
+            : 0,
       updatedAt: new Date(),
     })
     .where(eq(storeTable.id, storeId));

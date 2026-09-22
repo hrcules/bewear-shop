@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, CreditCard, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+
+import { startMercadoPagoCheckout } from "@/actions/mercadopago-checkout";
 
 import { createCheckoutSession } from "@/actions/create-checkout-session";
 import { createDirectOrder } from "@/actions/create-direct-order";
@@ -17,6 +19,7 @@ interface FinishOrderButtonProps {
   quantity?: number;
   addressId?: string;
   enableOnlinePayments?: boolean;
+  checkoutProvider?: string;
 }
 
 const FinishOrderButton = ({
@@ -24,8 +27,11 @@ const FinishOrderButton = ({
   quantity,
   addressId,
   enableOnlinePayments = true,
+  checkoutProvider = "legacy",
 }: FinishOrderButtonProps) => {
   const router = useRouter();
+  const requestKey = useRef<string | null>(null);
+  const inFlight = useRef(false);
   const finishOrderMutation = useFinishOrder();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -46,8 +52,25 @@ const FinishOrderButton = ({
     isRedirecting;
 
   const handleFinishOrder = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
       setIsRedirecting(true);
+      if (enableOnlinePayments && checkoutProvider === "mercadopago") {
+        const storageKey = `mp-checkout:${window.location.host}:${variantId ?? "cart"}:${quantity ?? ""}:${addressId ?? ""}`;
+        requestKey.current ??=
+          sessionStorage.getItem(storageKey) ?? crypto.randomUUID();
+        sessionStorage.setItem(storageKey, requestKey.current);
+        const result = await startMercadoPagoCheckout({
+          requestKey: requestKey.current,
+          direct:
+            variantId && quantity && addressId
+              ? { variantId, quantity, addressId }
+              : undefined,
+        });
+        window.location.assign(result.checkoutUrl);
+        return;
+      }
       let orderId: string;
 
       if (variantId && quantity && addressId) {
@@ -90,13 +113,14 @@ const FinishOrderButton = ({
         toast.error("Ocorreu um erro ao gerar o pedido. Tente novamente.");
       }
     } finally {
+      inFlight.current = false;
       setIsRedirecting(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      {enableOnlinePayments && (
+      {enableOnlinePayments && checkoutProvider !== "mercadopago" && (
         <div className="space-y-3">
           <p className="text-sm font-medium">Como você prefere pagar?</p>
 
@@ -132,6 +156,11 @@ const FinishOrderButton = ({
         </div>
       )}
 
+      {enableOnlinePayments && checkoutProvider === "mercadopago" && (
+        <p className="text-muted-foreground text-sm">
+          Você escolherá o meio de pagamento no checkout seguro do Mercado Pago.
+        </p>
+      )}
       <Button
         className="w-full rounded-full"
         size="lg"

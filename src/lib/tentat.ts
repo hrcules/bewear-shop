@@ -13,5 +13,11 @@ export const getTenantStore = async () => {
     where: eq(storeTable.slug, subdomain),
   });
 
-  return store;
+  if (!store) return store;
+  return {
+    ...store,
+    stripeSecretKey: null,
+    stripeWebhookSecret: null,
+    mpAccessToken: null,
+  };
 };

@@ -26,7 +26,7 @@ export const POST = async (request: Request) => {
   let unverifiedEvent;
   try {
     unverifiedEvent = JSON.parse(text);
-  } catch (err) {
+  } catch {
     console.error("❌ [Webhook] Falha: O corpo não é um JSON válido.");
     return new NextResponse("JSON Inválido", { status: 400 });
   }
@@ -65,6 +65,17 @@ export const POST = async (request: Request) => {
     return new NextResponse(`Erro na assinatura: ${(error as Error).message}`, {
       status: 400,
     });
+  }
+
+  if (event.type.startsWith("checkout.session.")) {
+    const orderId = (event.data.object as Stripe.Checkout.Session).metadata
+      ?.orderId;
+    if (!orderId) return new NextResponse("Missing order", { status: 400 });
+    const legacyOrder = await db.query.orderTable.findFirst({
+      where: and(eq(orderTable.id, orderId), eq(orderTable.storeId, store.id)),
+    });
+    if (!legacyOrder || legacyOrder.paymentProvider !== "legacy")
+      return NextResponse.json({ received: true });
   }
 
   // ==========================================
