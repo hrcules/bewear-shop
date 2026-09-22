@@ -8,7 +8,7 @@ import {
   storeTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { mpFetch, tokenSchema } from "@/lib/mercadopago/api";
+import { MpApiError, mpFetch, tokenSchema } from "@/lib/mercadopago/api";
 import { mpEnabled, oauthConfig, storeOrigin } from "@/lib/mercadopago/config";
 import { storePaymentLock } from "@/lib/mercadopago/connection";
 import { decrypt, encrypt, hash } from "@/lib/mercadopago/security";
@@ -104,7 +104,13 @@ export async function GET(request: NextRequest) {
         .onConflictDoUpdate({ target: mpConnectionTable.storeId, set: values });
     });
     target.searchParams.set("mp", "connected");
-  } catch {
+  } catch (error) {
+    console.error("❌ Mercado Pago OAuth callback falhou", {
+      message: error instanceof Error ? error.message : "Erro desconhecido",
+      status: error instanceof MpApiError ? error.status : undefined,
+      storeId: store.id,
+    });
+
     target.searchParams.set("mp", "error");
   }
   const response = NextResponse.redirect(target);
