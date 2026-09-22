@@ -78,16 +78,13 @@ const SignInForm = () => {
     const hostname = window.location.hostname;
     const storeSlug = hostname.split(".")[0];
 
-    const isDev = process.env.NODE_ENV === "development";
-    const mainDomain = isDev
-      ? "http://lvh.me:3000"
-      : "https://bewearshop.com.br/";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://lvh.me:3000";
 
-    const callbackURL = `${mainDomain}/api/redirect-hub?store=${storeSlug}`;
+    const callbackURL = `${appUrl}/api/redirect-hub?store=${storeSlug}`;
 
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: callbackURL,
+      callbackURL,
     });
   };
 

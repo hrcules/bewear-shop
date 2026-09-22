@@ -4,13 +4,22 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const store = url.searchParams.get("store");
 
-  const isDev = process.env.NODE_ENV === "development";
-  const baseHost = isDev ? "lvh.me:3000" : "bewearshop.com.br";
-  const protocol = isDev ? "http://" : "https://";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://lvh.me:3000";
 
-  if (store && store !== "www" && store !== "localhost") {
-    return NextResponse.redirect(`${protocol}${store}.${baseHost}/`);
+  const baseUrl = new URL(appUrl);
+
+  if (
+    store &&
+    store !== "www" &&
+    store !== "localhost" &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(store)
+  ) {
+    baseUrl.hostname = `${store}.${baseUrl.hostname}`;
   }
 
-  return NextResponse.redirect(`${protocol}${baseHost}`);
+  baseUrl.pathname = "/";
+  baseUrl.search = "";
+  baseUrl.hash = "";
+
+  return NextResponse.redirect(baseUrl);
 }
