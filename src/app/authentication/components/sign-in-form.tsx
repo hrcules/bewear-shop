@@ -75,19 +75,11 @@ const SignInForm = () => {
   }
 
   const handleSignInWithGoogle = async () => {
-    const hostname = window.location.hostname;
-    const storeSlug = hostname.split(".")[0];
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://lvh.me:3000";
-
-    const callbackURL = `${appUrl}/api/redirect-hub?store=${storeSlug}`;
-
     await authClient.signIn.social({
       provider: "google",
-      callbackURL,
+      callbackURL: window.location.origin,
     });
   };
-
   return (
     <>
       <Card className="w-full">
