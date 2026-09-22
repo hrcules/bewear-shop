@@ -95,24 +95,15 @@ export const auth = betterAuth({
   },
 
   trustedOrigins: [
-    // ==========================================================
-    // PRODUÇÃO
-    // ==========================================================
-
     "https://bewearshop.com.br",
     "https://www.bewearshop.com.br",
     "https://*.bewearshop.com.br",
 
-    // ==========================================================
-    // STAGING
-    // ==========================================================
-
     "https://staging.bewearshop.com.br",
     "https://*.staging.bewearshop.com.br",
 
-    // ==========================================================
-    // DESENVOLVIMENTO LOCAL
-    // ==========================================================
+    // workaround Better Auth 1.2.12
+    "https://bewear.staging.bewearshop.com.br",
 
     "http://lvh.me:3000",
     "http://*.lvh.me:3000",
