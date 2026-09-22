@@ -29,7 +29,7 @@ export const tokenSchema = z.object({
   refresh_token: z.string().min(1),
   expires_in: z.number().positive(),
   user_id: z.union([z.number(), z.string()]).transform(String),
-  live_mode: z.boolean(),
+  live_mode: z.boolean().optional(),
   scope: z.string(),
 });
 export const paymentSchema = z.object({
