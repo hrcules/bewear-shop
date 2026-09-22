@@ -11,8 +11,6 @@ import {
   Link as LinkIcon,
   Loader2,
   Truck,
-  QrCode,
-  Store,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -39,11 +37,9 @@ import {
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 
 interface SettingsFormProps {
   initialData: {
-    id: string;
     name: string;
     colorPrimary: string;
     logoUrl: string | null;
@@ -55,13 +51,6 @@ interface SettingsFormProps {
     whatsapp: string | null;
     fixedShippingFeeInCents: number;
     freeShippingThresholdInCents: number | null;
-    stripePublicKey: string | null;
-    stripeSecretKey: string | null;
-    stripeWebhookSecret: string | null;
-    mpAccessToken: string | null;
-    pixDiscountPercent: number;
-    enableOnlinePayments: boolean;
-    checkoutProvider: string;
   };
 }
 
@@ -120,23 +109,12 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       instagramUrl: initialData.instagramUrl || "",
       whatsapp: initialData.whatsapp || "",
 
-      enableOnlinePayments: initialData.enableOnlinePayments ?? true,
-
-      stripePublicKey: initialData.stripePublicKey || "",
-      stripeSecretKey: initialData.stripeSecretKey || "",
-      stripeWebhookSecret: initialData.stripeWebhookSecret || "",
-      mpAccessToken: initialData.mpAccessToken || "",
-
-      pixDiscountPercent: initialData.pixDiscountPercent.toString(),
-
       fixedShippingFee: (initialData.fixedShippingFeeInCents / 100).toString(),
       freeShippingThreshold: initialData.freeShippingThresholdInCents
         ? (initialData.freeShippingThresholdInCents / 100).toString()
         : "",
     },
   });
-
-  const isOnlinePaymentsEnabled = form.watch("enableOnlinePayments");
 
   const onSubmit = (data: UpdateStoreSettingsInput) => {
     const formData = new FormData();
@@ -149,21 +127,6 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       const cleanWhatsapp = data.whatsapp.replace(/\D/g, "");
       formData.append("whatsapp", cleanWhatsapp);
     }
-
-    formData.append("enableOnlinePayments", String(data.enableOnlinePayments));
-
-    if (data.stripePublicKey)
-      formData.append("stripePublicKey", data.stripePublicKey);
-    if (data.stripeSecretKey)
-      formData.append("stripeSecretKey", data.stripeSecretKey);
-    if (data.stripeWebhookSecret)
-      formData.append("stripeWebhookSecret", data.stripeWebhookSecret);
-
-    if (data.mpAccessToken)
-      formData.append("mpAccessToken", data.mpAccessToken);
-
-    if (data.pixDiscountPercent)
-      formData.append("pixDiscountPercent", data.pixDiscountPercent);
 
     const fixedCents = Math.round(Number(data.fixedShippingFee) * 100);
     formData.append("fixedShippingFeeInCents", fixedCents.toString());
@@ -208,43 +171,6 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Card className="border-primary/50 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Store className="h-5 w-5" /> Modelo de Vendas
-            </CardTitle>
-            <CardDescription>
-              Escolha se deseja receber pagamentos online automaticamente ou
-              operar como um catálogo.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FormField
-              name="enableOnlinePayments"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base font-semibold">
-                      Aceitar Pagamentos Online
-                    </FormLabel>
-                    <p className="text-muted-foreground text-[13px]">
-                      Se desativado, o checkout apenas reservará o estoque e o
-                      cliente finalizará o pagamento manualmente via WhatsApp.
-                    </p>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -451,144 +377,6 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
             />
           </CardContent>
         </Card>
-
-        {isOnlinePaymentsEnabled &&
-          initialData.checkoutProvider !== "mercadopago" && (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <LinkIcon className="h-5 w-5" /> Pagamentos (Cartão via
-                    Stripe)
-                  </CardTitle>
-                  <CardDescription>
-                    Conecte sua conta do Stripe para processar cartões de
-                    crédito de forma segura.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    name="stripePublicKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Chave Pública (Publishable Key)</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="pk_test_..."
-                            {...field}
-                            value={field.value || ""}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="stripeSecretKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Chave Secreta (Secret Key)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Deixe vazio para manter a chave atual"
-                            {...field}
-                            value={field.value || ""}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="stripeWebhookSecret"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Segredo do Webhook (Webhook Secret)
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Deixe vazio para manter o segredo atual"
-                            {...field}
-                            value={field.value || ""}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <p className="text-muted-foreground mt-1 text-[10px]">
-                          Configure seu Webhook no Stripe para apontar para:
-                          <code className="bg-muted ml-1 rounded px-1 py-0.5">
-                            {process.env.NEXT_PUBLIC_APP_URL}
-                            /api/stripe/webhook?storeId={initialData.id}
-                          </code>
-                        </p>
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-emerald-600">
-                    <QrCode className="h-5 w-5" /> Pagamentos (PIX via Mercado
-                    Pago)
-                  </CardTitle>
-                  <CardDescription>
-                    Gere QR Codes de PIX com aprovação instantânea e ofereça
-                    descontos.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    name="mpAccessToken"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Access Token (Produção)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Deixe vazio para manter o token atual"
-                            {...field}
-                            value={field.value || ""}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <p className="text-muted-foreground mt-1 text-[10px]">
-                          Gere este token no painel de desenvolvedores do
-                          Mercado Pago (Credenciais de Produção).
-                        </p>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    name="pixDiscountPercent"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Desconto para PIX (%)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            placeholder="Ex: 5 para 5% de desconto"
-                            {...field}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <p className="text-muted-foreground mt-1 text-[10px]">
-                          Incentive vendas à vista oferecendo um desconto
-                          automático no checkout (Deixe 0 para nenhum).
-                        </p>
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            </>
-          )}
 
         <Card>
           <CardHeader>

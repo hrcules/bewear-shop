@@ -1,13 +1,15 @@
 "use server";
 
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 import { db } from "@/db";
 import { storeTable } from "@/db/schema";
 import { r2 } from "@/lib/r2";
-import { tenantOwnerAction } from "@/lib/safe-action"; // ✅ O Escudo
+import { tenantOwnerAction } from "@/lib/safe-action";
+
+import { updateOnlinePaymentsSchema } from "./schema";
 
 async function uploadFileToR2(file: File, storeId: string, prefix: string) {
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -42,17 +44,6 @@ export const updateStoreSettingsAction = tenantOwnerAction<
   const instagramUrl = formData.get("instagramUrl") as string;
   const whatsapp = formData.get("whatsapp") as string;
 
-  // ✅ NOVO: Extraindo o booleano do FormData
-  const enableOnlinePayments = formData.get("enableOnlinePayments") === "true";
-
-  const stripePublicKey = formData.get("stripePublicKey") as string;
-  const stripeSecretKey = formData.get("stripeSecretKey") as string;
-  const stripeWebhookSecret = formData.get("stripeWebhookSecret") as string;
-  const mpAccessToken = formData.get("mpAccessToken") as string;
-  const pixDiscountPercentStr = formData.get("pixDiscountPercent") as
-    | string
-    | null;
-
   const fixedShippingFeeInCents = parseInt(
     (formData.get("fixedShippingFeeInCents") as string) || "0",
   );
@@ -63,14 +54,12 @@ export const updateStoreSettingsAction = tenantOwnerAction<
     ? parseInt(freeShippingThresholdStr)
     : null;
 
-  // Arquivos
   const logoFile = formData.get("logoFile") as File | null;
   const b1DesktopFile = formData.get("b1DesktopFile") as File | null;
   const b1MobileFile = formData.get("b1MobileFile") as File | null;
   const b2DesktopFile = formData.get("b2DesktopFile") as File | null;
   const b2MobileFile = formData.get("b2MobileFile") as File | null;
 
-  // Flags de remoção
   const removeLogo = formData.get("removeLogo") === "true";
   const removeB1D = formData.get("removeB1D") === "true";
   const removeB1M = formData.get("removeB1M") === "true";
@@ -85,7 +74,6 @@ export const updateStoreSettingsAction = tenantOwnerAction<
     banner2MobileUrl,
   } = store;
 
-  // --- Processamento de Uploads ---
   if (removeLogo) logoUrl = null;
   else if (logoFile && logoFile.size > 0)
     logoUrl = await uploadFileToR2(logoFile, storeId, "logo");
@@ -113,7 +101,6 @@ export const updateStoreSettingsAction = tenantOwnerAction<
       colorPrimary,
       instagramUrl,
       whatsapp,
-      enableOnlinePayments, // ✅ NOVO: Salvando no banco
       logoUrl,
       banner1DesktopUrl,
       banner1MobileUrl,
@@ -121,20 +108,29 @@ export const updateStoreSettingsAction = tenantOwnerAction<
       banner2MobileUrl,
       fixedShippingFeeInCents,
       freeShippingThresholdInCents,
-      stripePublicKey,
-      stripeSecretKey: stripeSecretKey?.trim() || store.stripeSecretKey,
-      stripeWebhookSecret:
-        stripeWebhookSecret?.trim() || store.stripeWebhookSecret,
-      mpAccessToken: mpAccessToken?.trim() || store.mpAccessToken,
-      pixDiscountPercent:
-        store.checkoutProvider === "mercadopago"
-          ? 0
-          : pixDiscountPercentStr
-            ? parseInt(pixDiscountPercentStr)
-            : 0,
       updatedAt: new Date(),
     })
     .where(eq(storeTable.id, storeId));
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+
+  return { success: true };
+});
+
+export const updateOnlinePaymentsAction = tenantOwnerAction<
+  unknown,
+  { success: boolean }
+>(async (input, ctx) => {
+  const { enabled } = updateOnlinePaymentsSchema.parse(input);
+
+  await db
+    .update(storeTable)
+    .set({
+      enableOnlinePayments: enabled,
+      updatedAt: new Date(),
+    })
+    .where(eq(storeTable.id, ctx.storeId));
 
   revalidatePath("/admin/settings");
   revalidatePath("/");

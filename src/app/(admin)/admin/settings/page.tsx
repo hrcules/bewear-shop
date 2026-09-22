@@ -5,12 +5,11 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { mpConnectionTable, mpCheckoutTable, orderTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-
 import { mpEnabled } from "@/lib/mercadopago/config";
 import { getTenantStore } from "@/lib/tentat";
-import { PaymentReview } from "./components/payment-review";
-import { MercadoPagoPanel } from "./components/mercadopago-panel";
 
+import { MercadoPagoPanel } from "./components/mercadopago-panel";
+import { PaymentReview } from "./components/payment-review";
 import { SettingsForm } from "./components/settings-form";
 
 export default async function SettingsPage({
@@ -36,6 +35,7 @@ export default async function SettingsPage({
     where: eq(mpConnectionTable.storeId, store.id),
     columns: { sellerId: true, status: true },
   });
+
   const reviews = await db
     .select({ id: mpCheckoutTable.orderId })
     .from(mpCheckoutTable)
@@ -45,6 +45,7 @@ export default async function SettingsPage({
         isNotNull(mpCheckoutTable.reviewReason),
       ),
     );
+
   const paymentReviews = await db
     .select({
       id: orderTable.id,
@@ -63,6 +64,7 @@ export default async function SettingsPage({
       ),
     )
     .limit(50);
+
   const { mp } = await searchParams;
 
   return (
@@ -78,19 +80,29 @@ export default async function SettingsPage({
 
       <MercadoPagoPanel
         available={mpEnabled()}
+        onlinePaymentsEnabled={store.enableOnlinePayments}
         enabled={store.checkoutProvider === "mercadopago"}
         sellerId={connection?.sellerId ?? null}
         status={connection?.status ?? null}
         result={mp}
         reviews={reviews.length}
       />
+
       <PaymentReview orders={paymentReviews} />
+
       <SettingsForm
         initialData={{
-          ...store,
-          stripeSecretKey: null,
-          stripeWebhookSecret: null,
-          mpAccessToken: null,
+          name: store.name,
+          colorPrimary: store.colorPrimary,
+          logoUrl: store.logoUrl,
+          banner1DesktopUrl: store.banner1DesktopUrl,
+          banner1MobileUrl: store.banner1MobileUrl,
+          banner2DesktopUrl: store.banner2DesktopUrl,
+          banner2MobileUrl: store.banner2MobileUrl,
+          instagramUrl: store.instagramUrl,
+          whatsapp: store.whatsapp,
+          fixedShippingFeeInCents: store.fixedShippingFeeInCents,
+          freeShippingThresholdInCents: store.freeShippingThresholdInCents,
         }}
       />
     </div>
