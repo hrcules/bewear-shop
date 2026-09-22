@@ -69,28 +69,12 @@ export const auth = betterAuth({
   advanced: {
     crossSubDomainCookies: {
       enabled: true,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
     },
 
     defaultCookieAttributes: {
       sameSite: "lax",
-
-      // Na Vercel, Preview também utiliza NODE_ENV=production.
       secure: process.env.NODE_ENV === "production",
-
-      /*
-       * Cada ambiente compartilha cookies somente
-       * entre seus próprios subdomínios.
-       *
-       * Produção:
-       * .bewearshop.com.br
-       *
-       * Staging:
-       * .staging.bewearshop.com.br
-       *
-       * Desenvolvimento:
-       * .lvh.me
-       */
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
     },
   },
 
