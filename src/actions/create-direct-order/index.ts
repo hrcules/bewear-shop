@@ -56,6 +56,9 @@ export const createDirectOrder = authenticatedAction<
     throw new Error("Internal Server Error: Loja não encontrada.");
   }
 
+  if (store.enableOnlinePayments && store.checkoutProvider === "mercadopago")
+    throw new Error("Use o novo checkout da loja.");
+
   const address = await db.query.shippingAddressTable.findFirst({
     where: eq(shippingAddressTable.id, addressId),
   });

@@ -63,6 +63,12 @@ export const POST = async (request: Request) => {
       return new NextResponse("Pedido não encontrado", { status: 400 });
     }
 
+    const legacyOrder = await db.query.orderTable.findFirst({
+      where: and(eq(orderTable.id, orderId), eq(orderTable.storeId, store.id)),
+    });
+    if (!legacyOrder || legacyOrder.paymentProvider !== "legacy")
+      return NextResponse.json({ received: true });
+
     // ==========================================
     // CENÁRIO 1: PIX PAGO COM SUCESSO! 🟢
     // ==========================================

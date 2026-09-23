@@ -28,6 +28,9 @@ export const createCheckoutSession = authenticatedAction<
     throw new Error("Pedido não encontrado ou não autorizado.");
   }
 
+  if (order.paymentProvider === "mercadopago" || order.status !== "pending")
+    throw new Error("Use o checkout vinculado ao pedido.");
+
   const store = await db.query.storeTable.findFirst({
     where: eq(storeTable.id, storeId),
   });
