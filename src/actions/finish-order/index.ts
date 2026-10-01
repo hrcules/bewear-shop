@@ -193,16 +193,21 @@ export const finishOrder = authenticatedAction<void, { orderId: string }>(
        * Portanto B não cria outro pedido.
        */
 
-      const lockedCart = await tx.execute(sql`
-        SELECT id
-        FROM ${cartTable}
-        WHERE ${cartTable.id} = ${cart.id}
-          AND ${cartTable.userId} = ${userId}
-          AND ${cartTable.storeId} = ${storeId}
-        FOR UPDATE
-      `);
+      const [lockedCart] = await tx
+        .select({
+          id: cartTable.id,
+        })
+        .from(cartTable)
+        .where(
+          and(
+            eq(cartTable.id, cart.id),
+            eq(cartTable.userId, userId),
+            eq(cartTable.storeId, storeId),
+          ),
+        )
+        .for("update");
 
-      if (lockedCart.rows.length === 0) {
+      if (!lockedCart) {
         throw new Error(
           "Este carrinho já foi finalizado ou não está mais disponível.",
         );
