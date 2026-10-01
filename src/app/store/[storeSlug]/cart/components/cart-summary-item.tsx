@@ -19,6 +19,7 @@ export default function CartSummaryItem({
   quantity,
   priceInCents,
 }: CartSummaryItemProps) {
+  
   return (
     <>
       <div className="flex items-center justify-between" key={id}>
