@@ -1,0 +1,113 @@
+import { eq } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
+
+import { db } from "@/db";
+import { storeTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { connectionToken } from "@/lib/mercadopago/connection";
+import { mpFetch } from "@/lib/mercadopago/api";
+
+export const runtime = "nodejs";
+
+export async function GET(request: NextRequest) {
+  try {
+    // 1. Verifica se estamos logados
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
+
+    // 2. Pega a preferência pela URL
+    const preferenceId = request.nextUrl.searchParams.get("preferenceId");
+
+    if (!preferenceId) {
+      return NextResponse.json(
+        { error: "Informe preferenceId." },
+        { status: 400 },
+      );
+    }
+
+    // 3. Descobre a loja do usuário logado
+    const store = await db.query.storeTable.findFirst({
+      where: eq(storeTable.ownerId, session.user.id),
+    });
+
+    if (!store) {
+      return NextResponse.json(
+        { error: "Loja não encontrada." },
+        { status: 404 },
+      );
+    }
+
+    // 4. Recupera o Access Token do vendedor
+    const connection = await connectionToken(store.id);
+
+    // 5. Consulta a preferência no Mercado Pago
+    const preference = await mpFetch(
+      `/checkout/preferences/${encodeURIComponent(preferenceId)}`,
+      connection.token,
+    );
+
+    // O mpFetch retorna unknown, então validamos o formato
+    // antes de acessar os campos.
+    if (
+      typeof preference !== "object" ||
+      preference === null ||
+      !("id" in preference)
+    ) {
+      return NextResponse.json(
+        { error: "Resposta inesperada do Mercado Pago." },
+        { status: 502 },
+      );
+    }
+
+    const data = preference as {
+      id?: unknown;
+      collector_id?: unknown;
+      external_reference?: unknown;
+      live_mode?: unknown;
+      items?: unknown;
+      payment_methods?: unknown;
+      shipments?: unknown;
+      back_urls?: unknown;
+      auto_return?: unknown;
+      init_point?: unknown;
+      sandbox_init_point?: unknown;
+    };
+
+    // 6. Retorna somente os dados úteis para o diagnóstico.
+    // O Access Token NUNCA é retornado.
+    return NextResponse.json({
+      id: data.id,
+      collector_id: data.collector_id,
+      external_reference: data.external_reference,
+      live_mode: data.live_mode,
+      items: data.items,
+      payment_methods: data.payment_methods,
+      shipments: data.shipments,
+      back_urls: data.back_urls,
+      auto_return: data.auto_return,
+      init_point: data.init_point,
+      sandbox_init_point: data.sandbox_init_point,
+    });
+  } catch (error) {
+    console.error("Mercado Pago debug preference failed", {
+      message: error instanceof Error ? error.message : "Erro desconhecido",
+      status:
+        typeof error === "object" && error !== null && "status" in error
+          ? error.status
+          : undefined,
+    });
+
+    return NextResponse.json(
+      {
+        error: "Não foi possível consultar a preferência.",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+      },
+      { status: 500 },
+    );
+  }
+}
