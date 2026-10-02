@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orderTable } from "@/db/schema";
 import { authenticatedAction } from "@/lib/safe-action";
-import { reserveCheckout, preferenceUrl } from "@/lib/mercadopago/checkout";
+import { reserveCheckout, orderUrl } from "@/lib/mercadopago/checkout";
 import { mpCheckoutSchema } from "./schema";
 export const startMercadoPagoCheckout = authenticatedAction<
   unknown,
@@ -16,5 +16,5 @@ export const startMercadoPagoCheckout = authenticatedAction<
   });
   if (order && order.status !== "pending")
     return { orderId, checkoutUrl: `/checkout/mercadopago?orderId=${orderId}` };
-  return { orderId, checkoutUrl: await preferenceUrl(orderId, ctx) };
+  return { orderId, checkoutUrl: await orderUrl(orderId, ctx) };
 });
