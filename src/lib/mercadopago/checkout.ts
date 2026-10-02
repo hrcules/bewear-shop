@@ -263,6 +263,18 @@ export async function preferenceUrl(
   });
   if (!store) throw new Error("Loja não encontrada.");
   const returnUrl = `${storeOrigin(store.slug)}/checkout/mercadopago?orderId=${orderId}`;
+  const order = await db.query.orderTable.findFirst({
+    where: eq(orderTable.id, orderId),
+  });
+  const payer = order
+    ? await db.query.shippingAddressTable.findFirst({
+        where: and(
+          eq(shippingAddressTable.id, order.shippingAddressId),
+          eq(shippingAddressTable.userId, ctx.userId),
+        ),
+      })
+    : null;
+  if (!payer) throw new Error("Endereço do comprador não encontrado.");
   try {
     const preference = z
       .object({
@@ -274,6 +286,9 @@ export async function preferenceUrl(
       .parse(
         await mpFetch("/checkout/preferences", connection.token, {
           external_reference: orderId,
+          payer: {
+            email: payer.email,
+          },
           items: checkout.items,
           shipments: {
             cost: checkout.shippingInCents / 100,
@@ -292,10 +307,9 @@ export async function preferenceUrl(
       );
     if (String(preference.collector_id) !== checkout.sellerId)
       throw new Error("Recebedor divergente.");
-    // Checkout Pro test purchases must use the production init_point while
-    // logged in with the Mercado Pago test buyer. The sandbox_init_point
-    // belongs to the legacy sandbox flow and causes the hosted checkout to
-    // fail before a payment is created.
+    // Checkout Pro redirects through the init_point returned by the
+    // Preferences API. During tests, Mercado Pago may redirect to its
+    // sandbox hostname; that hostname alone is not an error signal.
     const url = preference.init_point;
     const target = new URL(url);
     if (
