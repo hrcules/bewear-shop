@@ -305,6 +305,24 @@ export async function orderUrl(
     });
   }
 
+  const maskedEmail =
+    payer.email.length > 4
+      ? `${payer.email.slice(0, 2)}***@${payer.email.split("@")[1] ?? "***"}`
+      : "***";
+  const idempotencyKey = checkout.requestKey;
+  const requestSummary = {
+    orderId,
+    sellerId: checkout.sellerId,
+    liveMode: checkout.liveMode,
+    payerEmail: maskedEmail,
+    totalAmount: (totalInCents / 100).toFixed(2),
+    itemCount: items.length,
+    idempotencyKey,
+    callbackConfigured: true,
+  };
+
+  console.info("[MercadoPago][Orders] Creating order", requestSummary);
+
   try {
     const created = z
       .object({
@@ -372,6 +390,23 @@ export async function orderUrl(
 
     return created.checkout_url;
   } catch (error) {
+    const errorInfo =
+      error instanceof MpApiError
+        ? {
+            type: "mercado_pago_api_error",
+            status: error.status,
+            details: error.details,
+          }
+        : {
+            type: error instanceof Error ? error.name : "unknown_error",
+            message: error instanceof Error ? error.message : String(error),
+          };
+
+    console.error("[MercadoPago][Orders] Failed to create order", {
+      ...requestSummary,
+      error: errorInfo,
+    });
+
     if (error instanceof MpApiError && [401, 403].includes(error.status))
       await markConnectionInvalid(ctx.storeId);
 
@@ -379,7 +414,10 @@ export async function orderUrl(
       .update(mpCheckoutTable)
       .set({
         status: "review",
-        reviewReason: "order_creation_failed",
+        reviewReason:
+          error instanceof MpApiError
+            ? `order_creation_failed_${error.status}`
+            : "order_creation_failed",
         updatedAt: new Date(),
       })
       .where(eq(mpCheckoutTable.orderId, orderId));
