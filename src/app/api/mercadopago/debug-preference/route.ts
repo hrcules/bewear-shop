@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 3. Descobre a loja do usuário logado
+    // 3. Descobre a loja do usuário
     const store = await db.query.storeTable.findFirst({
       where: eq(storeTable.ownerId, session.user.id),
     });
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 4. Recupera o Access Token do vendedor
+    // 4. Recupera o Access Token do vendedor.
     // O token é descriptografado somente no servidor.
     const connection = await connectionToken(store.id);
 
@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
     );
 
     // 6. Consulta os meios de pagamento disponíveis
-    // para a conta Mercado Pago dessa conexão.
     const paymentMethods = await mpFetch(
       "/v1/payment_methods",
       connection.token,
@@ -77,6 +76,7 @@ export async function GET(request: NextRequest) {
       external_reference?: unknown;
       live_mode?: unknown;
       items?: unknown;
+      payer?: unknown;
       payment_methods?: unknown;
       shipments?: unknown;
       back_urls?: unknown;
@@ -113,8 +113,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 9. Retorna somente os dados necessários para o diagnóstico.
-    // O Access Token NUNCA é retornado.
+    // 9. Retorna somente dados seguros para o diagnóstico.
+    // O Access Token nunca é retornado.
     return NextResponse.json({
       preference: {
         id: data.id,
@@ -122,6 +122,7 @@ export async function GET(request: NextRequest) {
         external_reference: data.external_reference,
         live_mode: data.live_mode,
         items: data.items,
+        payer: data.payer,
         payment_methods: data.payment_methods,
         shipments: data.shipments,
         back_urls: data.back_urls,
@@ -129,9 +130,7 @@ export async function GET(request: NextRequest) {
         init_point: data.init_point,
         sandbox_init_point: data.sandbox_init_point,
       },
-
       payment_methods: paymentMethods,
-
       payments: payments
         ? payments
         : {
@@ -141,18 +140,25 @@ export async function GET(request: NextRequest) {
           },
     });
   } catch (error) {
+    const details =
+      error instanceof Error && "details" in error
+        ? (error as Error & { details?: unknown }).details
+        : undefined;
+
     console.error("Mercado Pago debug preference failed", {
       message: error instanceof Error ? error.message : "Erro desconhecido",
       status:
         typeof error === "object" && error !== null && "status" in error
           ? error.status
           : undefined,
+      details,
     });
 
     return NextResponse.json(
       {
         error: "Não foi possível consultar os dados do Mercado Pago.",
         message: error instanceof Error ? error.message : "Erro desconhecido",
+        details,
       },
       { status: 500 },
     );
