@@ -292,9 +292,11 @@ export async function preferenceUrl(
       );
     if (String(preference.collector_id) !== checkout.sellerId)
       throw new Error("Recebedor divergente.");
-    const url = connection.liveMode
-      ? preference.init_point
-      : preference.sandbox_init_point;
+    // Checkout Pro test purchases must use the production init_point while
+    // logged in with the Mercado Pago test buyer. The sandbox_init_point
+    // belongs to the legacy sandbox flow and causes the hosted checkout to
+    // fail before a payment is created.
+    const url = preference.init_point;
     const target = new URL(url);
     if (
       target.protocol !== "https:" ||
