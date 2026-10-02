@@ -215,7 +215,7 @@ export async function reserveCheckout(
   });
 }
 
-export async function preferenceUrl(
+export async function orderUrl(
   orderId: string,
   ctx: { userId: string; storeId: string },
 ) {
@@ -257,11 +257,14 @@ export async function preferenceUrl(
       .where(eq(mpCheckoutTable.orderId, orderId));
     return checkout;
   });
+
   if (checkout.checkoutUrl) return checkout.checkoutUrl;
+
   const store = await db.query.storeTable.findFirst({
     where: eq(storeTable.id, ctx.storeId),
   });
   if (!store) throw new Error("Loja não encontrada.");
+
   const returnUrl = `${storeOrigin(store.slug)}/checkout/mercadopago?orderId=${orderId}`;
   const order = await db.query.orderTable.findFirst({
     where: eq(orderTable.id, orderId),
@@ -275,73 +278,112 @@ export async function preferenceUrl(
       })
     : null;
   if (!payer) throw new Error("Endereço do comprador não encontrado.");
+
+  const productTotalInCents = checkout.items.reduce(
+    (sum, item) => sum + Math.round(item.unit_price * 100) * item.quantity,
+    0,
+  );
+  const totalInCents = productTotalInCents + checkout.shippingInCents;
+  if (totalInCents !== order?.totalPriceInCents)
+    throw new Error("Valor do pedido divergente.");
+
+  const items = checkout.items.map((item) => ({
+    title: item.title,
+    quantity: item.quantity,
+    unit_price: item.unit_price.toFixed(2),
+    total_amount: (item.unit_price * item.quantity).toFixed(2),
+    unit_measure: "unit",
+  }));
+
+  if (checkout.shippingInCents > 0) {
+    items.push({
+      title: "Frete",
+      quantity: 1,
+      unit_price: (checkout.shippingInCents / 100).toFixed(2),
+      total_amount: (checkout.shippingInCents / 100).toFixed(2),
+      unit_measure: "unit",
+    });
+  }
+
   try {
-    const preference = z
+    const created = z
       .object({
-        id: z.string(),
-        collector_id: z.number(),
-        init_point: z.string().url(),
-        sandbox_init_point: z.string().url(),
+        id: z.string().min(1),
+        user_id: z.union([z.string(), z.number()]).transform(String),
+        external_reference: z.string(),
+        total_amount: z.string(),
+        checkout_url: z.string().url(),
       })
       .parse(
-        await mpFetch("/checkout/preferences", connection.token, {
-          external_reference: orderId,
-          payer: {
-            email: payer.email,
+        await mpFetch(
+          "/v1/orders",
+          connection.token,
+          {
+            type: "online",
+            processing_mode: "manual",
+            total_amount: (totalInCents / 100).toFixed(2),
+            external_reference: orderId,
+            expiration_time: "P1D",
+            payer: {
+              email: payer.email,
+            },
+            items,
+            config: {
+              online: {
+                success_url: returnUrl,
+                pending_url: returnUrl,
+                failure_url: returnUrl,
+                auto_return: "approved",
+                callback_url: `${appOrigin()}/api/mercadopago/checkout-webhook?storeId=${ctx.storeId}`,
+              },
+            },
           },
-          items: checkout.items,
-          shipments: {
-            cost: checkout.shippingInCents / 100,
-            mode: "not_specified",
-          },
-          back_urls: {
-            success: returnUrl,
-            pending: returnUrl,
-            failure: returnUrl,
-          },
-          auto_return: "approved",
-          notification_url: `${appOrigin()}/api/mercadopago/checkout-webhook?storeId=${ctx.storeId}`,
-          expires: true,
-          expiration_date_to: checkout.expiresAt.toISOString(),
-        }),
+          "POST",
+          { "X-Idempotency-Key": checkout.requestKey },
+        ),
       );
-    if (String(preference.collector_id) !== checkout.sellerId)
+
+    if (created.user_id !== checkout.sellerId)
       throw new Error("Recebedor divergente.");
-    // Checkout Pro redirects through the init_point returned by the
-    // Preferences API. During tests, Mercado Pago may redirect to its
-    // sandbox hostname; that hostname alone is not an error signal.
-    const url = preference.init_point;
-    const target = new URL(url);
+    if (created.external_reference !== orderId)
+      throw new Error("Referência do pedido divergente.");
+    if (created.total_amount !== (totalInCents / 100).toFixed(2))
+      throw new Error("Valor retornado pelo Mercado Pago divergente.");
+
+    const target = new URL(created.checkout_url);
     if (
       target.protocol !== "https:" ||
       !(
-        target.hostname === "www.mercadopago.com.br" ||
+        target.hostname === "mercadopago.com.br" ||
         target.hostname.endsWith(".mercadopago.com.br")
       )
     )
       throw new Error("URL de checkout inválida.");
+
     await db
       .update(mpCheckoutTable)
       .set({
-        preferenceId: preference.id,
-        checkoutUrl: url,
+        mercadoPagoOrderId: created.id,
+        checkoutUrl: created.checkout_url,
         status: "ready",
         updatedAt: new Date(),
       })
       .where(eq(mpCheckoutTable.orderId, orderId));
-    return url;
+
+    return created.checkout_url;
   } catch (error) {
     if (error instanceof MpApiError && [401, 403].includes(error.status))
       await markConnectionInvalid(ctx.storeId);
-    // An ambiguous network result must NOT create another preference automatically.
+
     await db
       .update(mpCheckoutTable)
       .set({
         status: "review",
-        reviewReason: "preference_creation_failed",
+        reviewReason: "order_creation_failed",
         updatedAt: new Date(),
       })
       .where(eq(mpCheckoutTable.orderId, orderId));
+
     throw new Error(
       "Não foi possível abrir o pagamento. Seu pedido foi salvo e precisa de verificação antes de tentar novamente.",
     );
