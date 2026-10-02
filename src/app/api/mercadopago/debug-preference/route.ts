@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Recupera o Access Token do vendedor
+    // O token é descriptografado somente no servidor.
     const connection = await connectionToken(store.id);
 
     // 5. Consulta a preferência no Mercado Pago
@@ -51,15 +52,21 @@ export async function GET(request: NextRequest) {
       connection.token,
     );
 
-    // O mpFetch retorna unknown, então validamos o formato
-    // antes de acessar os campos.
+    // 6. Consulta os meios de pagamento disponíveis
+    // para a conta Mercado Pago dessa conexão.
+    const paymentMethods = await mpFetch(
+      "/v1/payment_methods",
+      connection.token,
+    );
+
+    // 7. Valida minimamente a resposta da preferência
     if (
       typeof preference !== "object" ||
       preference === null ||
       !("id" in preference)
     ) {
       return NextResponse.json(
-        { error: "Resposta inesperada do Mercado Pago." },
+        { error: "Resposta inesperada do Mercado Pago para a preferência." },
         { status: 502 },
       );
     }
@@ -78,20 +85,24 @@ export async function GET(request: NextRequest) {
       sandbox_init_point?: unknown;
     };
 
-    // 6. Retorna somente os dados úteis para o diagnóstico.
+    // 8. Retorna somente os dados necessários para o diagnóstico.
     // O Access Token NUNCA é retornado.
     return NextResponse.json({
-      id: data.id,
-      collector_id: data.collector_id,
-      external_reference: data.external_reference,
-      live_mode: data.live_mode,
-      items: data.items,
-      payment_methods: data.payment_methods,
-      shipments: data.shipments,
-      back_urls: data.back_urls,
-      auto_return: data.auto_return,
-      init_point: data.init_point,
-      sandbox_init_point: data.sandbox_init_point,
+      preference: {
+        id: data.id,
+        collector_id: data.collector_id,
+        external_reference: data.external_reference,
+        live_mode: data.live_mode,
+        items: data.items,
+        payment_methods: data.payment_methods,
+        shipments: data.shipments,
+        back_urls: data.back_urls,
+        auto_return: data.auto_return,
+        init_point: data.init_point,
+        sandbox_init_point: data.sandbox_init_point,
+      },
+
+      payment_methods: paymentMethods,
     });
   } catch (error) {
     console.error("Mercado Pago debug preference failed", {
@@ -104,7 +115,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: "Não foi possível consultar a preferência.",
+        error: "Não foi possível consultar os dados do Mercado Pago.",
         message: error instanceof Error ? error.message : "Erro desconhecido",
       },
       { status: 500 },
