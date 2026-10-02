@@ -94,6 +94,11 @@ export async function GET(request: NextRequest) {
       try {
         const params = new URLSearchParams({
           external_reference: data.external_reference,
+          sort: "date_created",
+          criteria: "desc",
+          range: "date_created",
+          begin_date: "NOW-2DAYS",
+          end_date: "NOW",
           limit: "20",
           offset: "0",
         });
