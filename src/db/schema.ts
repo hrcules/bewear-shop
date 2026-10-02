@@ -403,6 +403,7 @@ export const mpCheckoutTable = pgTable(
     sellerId: text("seller_id").notNull(),
     liveMode: boolean("live_mode").notNull(),
     preferenceId: text("preference_id").unique(),
+    mercadoPagoOrderId: text("mercado_pago_order_id").unique(),
     checkoutUrl: text("checkout_url"),
     status: text("status").notNull().default("new"),
     paymentId: text("payment_id").unique(),
