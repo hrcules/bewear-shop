@@ -1,10 +1,21 @@
 import { z } from "zod";
 
 export class MpApiError extends Error {
-  constructor(public status: number) {
-    super(`Mercado Pago indisponível (${status}).`);
+  constructor(
+    public status: number,
+    public details?: unknown,
+  ) {
+    super(
+      typeof details === "object" &&
+        details !== null &&
+        "message" in details &&
+        typeof details.message === "string"
+        ? details.message
+        : `Mercado Pago indisponível (${status}).`,
+    );
   }
 }
+
 export async function mpFetch(
   path: string,
   token?: string,
@@ -21,8 +32,25 @@ export async function mpFetch(
     cache: "no-store",
     signal: AbortSignal.timeout(12000),
   });
-  if (!response.ok) throw new MpApiError(response.status);
-  return response.json();
+
+  const raw = await response.text();
+  let details: unknown = undefined;
+  if (raw) {
+    try {
+      details = JSON.parse(raw);
+    } catch {
+      details = { message: raw.slice(0, 1000) };
+    }
+  }
+
+  if (!response.ok) throw new MpApiError(response.status, details);
+
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error("Mercado Pago retornou uma resposta inválida.");
+  }
 }
 export const tokenSchema = z.object({
   access_token: z.string().min(1),
