@@ -21,12 +21,14 @@ export async function mpFetch(
   token?: string,
   body?: unknown,
   method?: string,
+  extraHeaders?: Record<string, string>,
 ): Promise<unknown> {
   const response = await fetch(`https://api.mercadopago.com${path}`, {
     method: method ?? (body ? "POST" : "GET"),
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...extraHeaders,
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
