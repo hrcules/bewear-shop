@@ -85,7 +85,30 @@ export async function GET(request: NextRequest) {
       sandbox_init_point?: unknown;
     };
 
-    // 8. Retorna somente os dados necessários para o diagnóstico.
+    // 8. Busca pagamentos relacionados ao pedido.
+    // O external_reference da preferência é o orderId da BEWEAR.
+    let payments: unknown = null;
+    let paymentsSearchError: string | null = null;
+
+    if (typeof data.external_reference === "string") {
+      try {
+        const params = new URLSearchParams({
+          external_reference: data.external_reference,
+          limit: "20",
+          offset: "0",
+        });
+
+        payments = await mpFetch(
+          `/v1/payments/search?${params.toString()}`,
+          connection.token,
+        );
+      } catch (error) {
+        paymentsSearchError =
+          error instanceof Error ? error.message : "Erro desconhecido";
+      }
+    }
+
+    // 9. Retorna somente os dados necessários para o diagnóstico.
     // O Access Token NUNCA é retornado.
     return NextResponse.json({
       preference: {
@@ -103,6 +126,14 @@ export async function GET(request: NextRequest) {
       },
 
       payment_methods: paymentMethods,
+
+      payments: payments
+        ? payments
+        : {
+            error:
+              paymentsSearchError ??
+              "A preferência não possui external_reference válido.",
+          },
     });
   } catch (error) {
     console.error("Mercado Pago debug preference failed", {
