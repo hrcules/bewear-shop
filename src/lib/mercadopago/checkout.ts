@@ -161,7 +161,6 @@ export async function reserveCheckout(
     )
       throw new Error("Valor inválido.");
     const orderId = randomUUID();
-    // ON CONFLICT avoids aborting the transaction if a display number collides.
     let inserted = false;
     for (let n = 0; n < 10; n++) {
       const rows = await tx
@@ -400,6 +399,7 @@ export async function orderUrl(
         ? {
             type: "mercado_pago_api_error",
             status: error.status,
+            message: error.message,
             details: error.details,
           }
         : {
@@ -407,10 +407,17 @@ export async function orderUrl(
             message: error instanceof Error ? error.message : String(error),
           };
 
-    console.error("[MercadoPago][Orders] Failed to create order", {
-      ...requestSummary,
-      error: errorInfo,
-    });
+    console.error(
+      "[MercadoPago][Orders] Failed to create order",
+      JSON.stringify(
+        {
+          ...requestSummary,
+          error: errorInfo,
+        },
+        null,
+        2,
+      ),
+    );
 
     if (error instanceof MpApiError && [401, 403].includes(error.status))
       await markConnectionInvalid(ctx.storeId);
