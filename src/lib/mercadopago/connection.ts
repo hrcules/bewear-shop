@@ -30,6 +30,7 @@ export async function connectionToken(storeId: string, allowDisabled = false) {
           ...oauthConfig(),
           grant_type: "refresh_token",
           refresh_token: decrypt(connection.refreshTokenEncrypted, storeId),
+          ...(process.env.MP_TEST_MODE === "true" ? { test_token: "true" } : {}),
         }),
       );
       if (
