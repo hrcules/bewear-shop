@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
         code,
         grant_type: "authorization_code",
         code_verifier: decrypt(attempt.verifierEncrypted, attempt.storeId),
+        ...(process.env.MP_TEST_MODE === "true" ? { test_token: "true" } : {}),
       }),
     );
 
@@ -87,11 +88,10 @@ export async function GET(request: NextRequest) {
     // VALIDAÇÃO DO AMBIENTE
     // ==========================================================
 
-    // Para Checkout Pro Orders em sandbox, o Mercado Pago exige
-    // usuários de teste com credenciais de produção (APP_USR).
-    // Portanto, a conexão de Orders usa liveMode=true mesmo
-    // quando o fluxo está sendo usado para testes.
-    const expectedLiveMode = true;
+    // Em testes, o token OAuth precisa ser explicitamente de sandbox.
+    // O Mercado Pago documenta test_token=true para gerar credenciais
+    // de sandbox; esses tokens devem operar com live_mode=false.
+    const expectedLiveMode = process.env.MP_TEST_MODE === "true" ? false : true;
 
     /*
      * Algumas respostas OAuth do Mercado Pago não retornam
