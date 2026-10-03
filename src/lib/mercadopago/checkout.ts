@@ -355,7 +355,7 @@ export async function orderUrl(
                 pending_url: returnUrl,
                 failure_url: returnUrl,
                 auto_return: "approved",
-                callback_url: `${appOrigin()}/api/mercadopago/checkout-webhook?storeId=${ctx.storeId}`,
+                callback_url: `${storeOrigin(store.slug)}/api/mercadopago/checkout-webhook?storeId=${ctx.storeId}`,
               },
             },
           },
