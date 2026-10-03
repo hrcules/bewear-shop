@@ -24,5 +24,6 @@ export function oauthConfig() {
     client_id: required("MP_CLIENT_ID"),
     client_secret: required("MP_CLIENT_SECRET"),
     redirect_uri: `${appOrigin()}/api/mercadopago/oauth/callback`,
+    ...(process.env.MP_TEST_MODE === "true" ? { test_token: "true" } : {}),
   };
 }
