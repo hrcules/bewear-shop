@@ -87,32 +87,15 @@ export async function GET(request: NextRequest) {
     // VALIDAÇÃO DO AMBIENTE
     // ==========================================================
 
-    const isTestMode = process.env.MP_TEST_MODE === "true";
-
-    /*
-     * Em homologação:
-     *
-     * MP_TEST_MODE=true
-     * → esperamos liveMode=false
-     *
-     * Em produção:
-     *
-     * MP_TEST_MODE=false
-     * → esperamos liveMode=true
-     */
     // Para Checkout Pro Orders em sandbox, o Mercado Pago exige
-    // usuários de teste com credenciais de produção (APP_USR),
-    // e rejeita tokens de teste (TEST-*). Portanto, MP_TEST_MODE
-    // não deve ser usado para gerar um token TEST nem para forçar
-    // liveMode=false neste fluxo.
+    // usuários de teste com credenciais de produção (APP_USR).
+    // Portanto, a conexão de Orders usa liveMode=true mesmo
+    // quando o fluxo está sendo usado para testes.
     const expectedLiveMode = true;
 
     /*
-     * Algumas respostas OAuth do Mercado Pago não estão
-     * retornando live_mode.
-     *
-     * Quando isso acontecer, usamos o ambiente que a BEWEAR
-     * explicitamente solicitou.
+     * Algumas respostas OAuth do Mercado Pago não retornam
+     * live_mode. Nesse caso, usamos o ambiente esperado acima.
      */
     const liveMode = token.live_mode ?? expectedLiveMode;
 
@@ -156,13 +139,17 @@ export async function GET(request: NextRequest) {
         .for("update");
 
       /*
-       * Impede trocar silenciosamente o recebedor de uma
-       * loja que já possui histórico de Checkout Pro.
+       * sellerId identifica o recebedor Mercado Pago.
+       *
+       * liveMode não participa desta validação porque a migração
+       * de Preferences/credencial TEST para Checkout Pro Orders
+       * pode alterar o modo armazenado sem trocar o recebedor.
+       *
+       * Se o sellerId mudar e já houver histórico, bloqueamos a
+       * troca silenciosa para evitar que pagamentos anteriores
+       * fiquem associados a um recebedor diferente.
        */
-      if (
-        previous &&
-        (previous.sellerId !== token.user_id || previous.liveMode !== liveMode)
-      ) {
+      if (previous && previous.sellerId !== token.user_id) {
         const history = await tx
           .select({
             id: mpCheckoutTable.orderId,
@@ -180,16 +167,10 @@ export async function GET(request: NextRequest) {
 
       const values = {
         sellerId: token.user_id,
-
         accessTokenEncrypted: encrypt(token.access_token, store.id),
-
         refreshTokenEncrypted: encrypt(token.refresh_token, store.id),
-
         expiresAt: new Date(Date.now() + token.expires_in * 1000),
-
-        // Agora é SEMPRE boolean.
         liveMode,
-
         status: "connected",
         updatedAt: new Date(),
       };
@@ -210,9 +191,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("❌ Mercado Pago OAuth callback falhou", {
       message: error instanceof Error ? error.message : "Erro desconhecido",
-
       status: error instanceof MpApiError ? error.status : undefined,
-
       storeId: store.id,
     });
 
@@ -222,7 +201,6 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(target);
 
   response.headers.set("Cache-Control", "no-store");
-
   response.headers.set("Referrer-Policy", "no-referrer");
 
   return response;
