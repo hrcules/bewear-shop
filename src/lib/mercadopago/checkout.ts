@@ -286,12 +286,13 @@ export async function orderUrl(
   if (totalInCents !== order?.totalPriceInCents)
     throw new Error("Valor do pedido divergente.");
 
+  // Na Orders API do Checkout Pro, os itens aceitam title, quantity e
+  // unit_price. Não enviar total_amount/unit_measure: a API rejeita esses
+  // campos adicionais no payload de criação da order.
   const items = checkout.items.map((item) => ({
     title: item.title,
     quantity: item.quantity,
     unit_price: item.unit_price.toFixed(2),
-    total_amount: (item.unit_price * item.quantity).toFixed(2),
-    unit_measure: "unit",
   }));
 
   if (checkout.shippingInCents > 0) {
@@ -299,8 +300,6 @@ export async function orderUrl(
       title: "Frete",
       quantity: 1,
       unit_price: (checkout.shippingInCents / 100).toFixed(2),
-      total_amount: (checkout.shippingInCents / 100).toFixed(2),
-      unit_measure: "unit",
     });
   }
 
