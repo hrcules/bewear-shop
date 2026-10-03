@@ -305,9 +305,14 @@ export async function orderUrl(
     });
   }
 
+  // O sandbox do Mercado Pago exige um e-mail @testuser.com.
+  // Em testes, não precisamos criar uma conta BEWEAR com esse e-mail:
+  // usamos um e-mail fixo apenas no payload enviado ao Mercado Pago.
+  const mercadoPagoPayerEmail =
+    process.env.MP_TEST_MODE === "true" ? "test@testuser.com" : payer.email;
   const maskedEmail =
-    payer.email.length > 4
-      ? `${payer.email.slice(0, 2)}***@${payer.email.split("@")[1] ?? "***"}`
+    mercadoPagoPayerEmail.length > 4
+      ? `${mercadoPagoPayerEmail.slice(0, 2)}***@${mercadoPagoPayerEmail.split("@")[1] ?? "***"}`
       : "***";
   const idempotencyKey = checkout.requestKey;
   const requestSummary = {
@@ -343,7 +348,7 @@ export async function orderUrl(
             external_reference: orderId,
             expiration_time: "P1D",
             payer: {
-              email: payer.email,
+              email: mercadoPagoPayerEmail,
             },
             items,
             config: {
