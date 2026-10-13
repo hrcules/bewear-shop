@@ -1,22 +1,14 @@
-import { and, eq, isNotNull, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db";
-import { mpConnectionTable, mpCheckoutTable, orderTable } from "@/db/schema";
+import { storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { mpEnabled } from "@/lib/mercadopago/config";
-import { getTenantStore } from "@/lib/tentat";
 
-import { MercadoPagoPanel } from "./components/mercadopago-panel";
-import { PaymentReview } from "./components/payment-review";
 import { SettingsForm } from "./components/settings-form";
 
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ mp?: string }>;
-}) {
+export default async function SettingsPage() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -25,47 +17,13 @@ export default async function SettingsPage({
     redirect("/authentication");
   }
 
-  const store = await getTenantStore();
-
-  if (!store || store.ownerId !== session.user.id) {
-    redirect("/");
-  }
-
-  const connection = await db.query.mpConnectionTable.findFirst({
-    where: eq(mpConnectionTable.storeId, store.id),
-    columns: { sellerId: true, status: true },
+  const store = await db.query.storeTable.findFirst({
+    where: eq(storeTable.ownerId, session.user.id),
   });
 
-  const reviews = await db
-    .select({ id: mpCheckoutTable.orderId })
-    .from(mpCheckoutTable)
-    .where(
-      and(
-        eq(mpCheckoutTable.storeId, store.id),
-        isNotNull(mpCheckoutTable.reviewReason),
-      ),
-    );
-
-  const paymentReviews = await db
-    .select({
-      id: orderTable.id,
-      number: orderTable.orderNumber,
-      status: orderTable.status,
-    })
-    .from(mpCheckoutTable)
-    .innerJoin(orderTable, eq(orderTable.id, mpCheckoutTable.orderId))
-    .where(
-      and(
-        eq(mpCheckoutTable.storeId, store.id),
-        or(
-          eq(orderTable.status, "pending"),
-          isNotNull(mpCheckoutTable.reviewReason),
-        ),
-      ),
-    )
-    .limit(50);
-
-  const { mp } = await searchParams;
+  if (!store) {
+    redirect("/");
+  }
 
   return (
     <div className="space-y-6">
@@ -78,33 +36,7 @@ export default async function SettingsPage({
         </p>
       </div>
 
-      <MercadoPagoPanel
-        available={mpEnabled()}
-        onlinePaymentsEnabled={store.enableOnlinePayments}
-        enabled={store.checkoutProvider === "mercadopago"}
-        sellerId={connection?.sellerId ?? null}
-        status={connection?.status ?? null}
-        result={mp}
-        reviews={reviews.length}
-      />
-
-      <PaymentReview orders={paymentReviews} />
-
-      <SettingsForm
-        initialData={{
-          name: store.name,
-          colorPrimary: store.colorPrimary,
-          logoUrl: store.logoUrl,
-          banner1DesktopUrl: store.banner1DesktopUrl,
-          banner1MobileUrl: store.banner1MobileUrl,
-          banner2DesktopUrl: store.banner2DesktopUrl,
-          banner2MobileUrl: store.banner2MobileUrl,
-          instagramUrl: store.instagramUrl,
-          whatsapp: store.whatsapp,
-          fixedShippingFeeInCents: store.fixedShippingFeeInCents,
-          freeShippingThresholdInCents: store.freeShippingThresholdInCents,
-        }}
-      />
+      <SettingsForm initialData={store} />
     </div>
   );
 }

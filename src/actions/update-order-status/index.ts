@@ -21,18 +21,6 @@ export const updateOrderStatusAction = tenantOwnerAction<
     throw new Error("Pedido não encontrado ou não pertence à sua loja.");
   }
 
-  if (order.paymentProvider === "mercadopago") {
-    const next: Record<string, string[]> = {
-      paid: ["processing", "shipped"],
-      processing: ["shipped"],
-      shipped: ["delivered"],
-    };
-    if (!(next[order.status] ?? []).includes(newStatus))
-      throw new Error(
-        "Pagamentos Mercado Pago são confirmados pelo gateway. Para cancelamento, concilie o pagamento antes de liberar estoque.",
-      );
-  }
-
   if (order.status === "cancelled" && newStatus !== "cancelled") {
     throw new Error(
       "Não é possível alterar o status de um pedido já cancelado.",

@@ -147,7 +147,6 @@ const ConfirmationPage = async ({ searchParams }: ConfirmationPageProps) => {
                   quantity={quantity ? Number(quantity) : undefined}
                   addressId={addressId}
                   enableOnlinePayments={enableOnlinePayments}
-                  checkoutProvider={store.checkoutProvider}
                 />
               </CardContent>
             </Card>

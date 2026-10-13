@@ -1,4 +1,3 @@
-// OAuth connections are never seeded. Existing fixtures use checkoutProvider=legacy.
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
 
