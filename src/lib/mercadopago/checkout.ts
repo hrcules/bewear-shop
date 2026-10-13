@@ -303,11 +303,19 @@ export async function orderUrl(
     });
   }
 
-  // O sandbox do Mercado Pago exige um e-mail @testuser.com.
-  // Em testes, não precisamos criar uma conta BEWEAR com esse e-mail:
-  // usamos um e-mail fixo apenas no payload enviado ao Mercado Pago.
+  // O sandbox do Mercado Pago exige um e-mail @testuser.com, e a doc de
+  // teste da Orders API pede que o payer.email seja o da conta de teste
+  // COMPRADOR usada para logar no checkout_url. Configure esse e-mail em
+  // MP_TEST_PAYER_EMAIL. Sem a variável, mantém o valor genérico anterior.
+  const testPayerEmail = process.env.MP_TEST_PAYER_EMAIL?.trim();
+  if (process.env.MP_TEST_MODE === "true" && !testPayerEmail)
+    console.warn(
+      "[MercadoPago][Orders] MP_TEST_PAYER_EMAIL ausente; usando e-mail genérico de teste.",
+    );
   const mercadoPagoPayerEmail =
-    process.env.MP_TEST_MODE === "true" ? "test@testuser.com" : payer.email;
+    process.env.MP_TEST_MODE === "true"
+      ? (testPayerEmail ?? "test@testuser.com")
+      : payer.email;
   const maskedEmail =
     mercadoPagoPayerEmail.length > 4
       ? `${mercadoPagoPayerEmail.slice(0, 2)}***@${mercadoPagoPayerEmail.split("@")[1] ?? "***"}`
