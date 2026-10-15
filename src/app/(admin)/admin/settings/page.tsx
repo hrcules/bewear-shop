@@ -3,12 +3,20 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db";
-import { storeTable } from "@/db/schema";
+import { mpConnectionTable, storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
+import { mpEnabled } from "@/lib/mercadopago/config";
+
+import { MercadoPagoPanel } from "./components/mercadopago-panel";
 import { SettingsForm } from "./components/settings-form";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mp?: string }>;
+}) {
+  const { mp } = await searchParams;
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -25,6 +33,10 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
+  const connection = await db.query.mpConnectionTable.findFirst({
+    where: eq(mpConnectionTable.storeId, store.id),
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -37,6 +49,13 @@ export default async function SettingsPage() {
       </div>
 
       <SettingsForm initialData={store} />
+
+      <MercadoPagoPanel
+        available={mpEnabled()}
+        sellerId={connection?.sellerId ?? null}
+        status={connection?.status ?? null}
+        result={mp}
+      />
     </div>
   );
 }
