@@ -16,6 +16,8 @@ import { orderTable } from "@/db/schema";
 import { formatCentsToBRL } from "@/helpers/money";
 import { translateOrderStatus } from "@/helpers/orders-status";
 
+import { PendingPaymentButton } from "./pending-payment-button";
+
 interface OrdersProps {
   orders: Array<{
     id: string;
@@ -23,6 +25,7 @@ interface OrdersProps {
     orderNumber: number | null;
     status: (typeof orderTable.$inferSelect)["status"];
     createdAt: Date;
+    paymentProvider: string;
     items: Array<{
       id: string;
       imageUrl: string;
@@ -81,6 +84,16 @@ const Orders = ({ orders }: OrdersProps) => {
                       {order.createdAt.toLocaleTimeString()}
                     </span>
                   </p>
+
+                  {order.status === "pending" &&
+                    order.paymentProvider === "mercadopago" && (
+                      <div className="mt-4 flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm">
+                          Este pedido ainda aguarda o pagamento.
+                        </p>
+                        <PendingPaymentButton orderId={order.id} />
+                      </div>
+                    )}
 
                   <Separator className="my-4" />
 

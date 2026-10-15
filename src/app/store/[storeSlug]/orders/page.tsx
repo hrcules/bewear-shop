@@ -55,6 +55,7 @@ const MyOrdersPage = async () => {
               orderNumber: order.orderNumber,
               status: order.status,
               createdAt: order.createdAt,
+              paymentProvider: order.paymentProvider,
               items: order.items.map((item) => ({
                 id: item.id,
                 imageUrl: item.productVariant.imageUrl,
