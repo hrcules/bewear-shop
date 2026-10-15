@@ -84,7 +84,7 @@ export function PendingPaymentButton({ orderId }: { orderId: string }) {
     <>
       <Button size="sm" onClick={open} disabled={pending}>
         {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Pagar / ver QR Code Pix
+        Pagar agora
       </Button>
 
       <Dialog open={!!pix} onOpenChange={(value) => !value && setPix(null)}>

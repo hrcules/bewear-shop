@@ -15,6 +15,7 @@ const pixPaymentSchema = z.object({
   status: z.string(),
   payment_method_id: z.string().optional(),
   date_of_expiration: z.string().nullish(),
+  date_created: z.string().nullish(),
   point_of_interaction: z
     .object({
       transaction_data: z
@@ -74,6 +75,12 @@ export const getPendingPayment = authenticatedAction<
           token: connection.token,
         }),
       );
+      // DIAGNÓSTICO TEMPORÁRIO (sem segredos): datas devolvidas pelo MP.
+      console.info("MP Pix datas", {
+        dateCreated: payment.date_created,
+        dateOfExpiration: payment.date_of_expiration,
+        nowIso: new Date().toISOString(),
+      });
       const transaction = payment.point_of_interaction?.transaction_data;
       const expired =
         payment.date_of_expiration &&
