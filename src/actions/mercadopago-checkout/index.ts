@@ -81,17 +81,34 @@ export const createMercadoPagoCheckout = authenticatedAction<
     throw new Error("O total do pedido não confere. Refaça o pedido.");
   }
 
-  const mpItems = items.map((item) => ({
-    id: item.productVariantId,
-    title:
-      `${item.productVariant.product.name} - ${item.productVariant.name}`.slice(
-        0,
-        120,
-      ),
-    quantity: item.quantity,
-    unit_price: item.priceInCents / 100,
-    currency_id: "BRL" as const,
-  }));
+  type MpItem = {
+    id: string;
+    title: string;
+    description?: string;
+    picture_url?: string;
+    quantity: number;
+    unit_price: number;
+    currency_id: "BRL";
+  };
+
+  const mpItems: MpItem[] = items.map((item) => {
+    const imageUrl = item.productVariant.imageUrl;
+    const description = item.productVariant.product.description?.trim();
+    return {
+      id: item.productVariantId,
+      title:
+        `${item.productVariant.product.name} - ${item.productVariant.name}`.slice(
+          0,
+          120,
+        ),
+      // O checkout só exibe imagens servidas por https público.
+      ...(imageUrl?.startsWith("https://") ? { picture_url: imageUrl } : {}),
+      ...(description ? { description: description.slice(0, 250) } : {}),
+      quantity: item.quantity,
+      unit_price: item.priceInCents / 100,
+      currency_id: "BRL" as const,
+    };
+  });
   if (shippingInCents > 0) {
     mpItems.push({
       id: "frete",
