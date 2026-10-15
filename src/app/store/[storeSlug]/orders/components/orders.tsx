@@ -46,6 +46,7 @@ const Orders = ({ orders }: OrdersProps) => {
     switch (status.toLowerCase()) {
       case "pending":
       case "canceled":
+      case "cancelled":
         return "destructive";
       case "refunded":
         return "secondary";
