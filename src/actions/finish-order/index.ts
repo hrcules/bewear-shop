@@ -99,7 +99,6 @@ export const finishOrder = authenticatedAction<void, { orderId: string }>(
           totalPriceInCents,
           shippingAddressId: cart.shippingAddress.id,
           status: "pending",
-          stripeCheckoutSessionId: "",
         })
         .returning();
 

@@ -6,7 +6,6 @@ interface CartSummaryProps {
   subtotalInCents: number;
   freteInCents: number;
   totalInCents: number;
-  pixDiscountPercent?: number; // ✅ NOVO: Recebendo a porcentagem
   products: Array<{
     id: string;
     name: string;
@@ -21,15 +20,8 @@ const CartSummary = ({
   subtotalInCents,
   freteInCents,
   totalInCents,
-  pixDiscountPercent = 0,
   products,
 }: CartSummaryProps) => {
-  const pixDiscountAmount =
-    pixDiscountPercent > 0
-      ? Math.round((subtotalInCents * pixDiscountPercent) / 100)
-      : 0;
-  const pixTotalInCents = subtotalInCents - pixDiscountAmount + freteInCents;
-
   return (
     <Card>
       <CardHeader>
@@ -52,25 +44,9 @@ const CartSummary = ({
 
         <Separator />
 
-        {/* Aqui está o pulo do gato: Apenas duas linhas claras */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Total no Cartão</p>
-            <p className="text-muted-foreground text-sm">
-              {formatCentsToBRL(totalInCents)}
-            </p>
-          </div>
-
-          {pixDiscountPercent > 0 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-emerald-600">
-                Total no PIX ({pixDiscountPercent}% desc.)
-              </p>
-              <p className="text-lg font-bold text-emerald-600">
-                {formatCentsToBRL(pixTotalInCents)}
-              </p>
-            </div>
-          )}
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">Total</p>
+          <p className="text-lg font-bold">{formatCentsToBRL(totalInCents)}</p>
         </div>
 
         {/* ... (resto dos itens) */}

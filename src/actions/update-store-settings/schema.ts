@@ -18,12 +18,6 @@ export const updateStoreSettingsSchema = z.object({
   fixedShippingFee: z.string().min(1, "O valor do frete é obrigatório"),
   freeShippingThreshold: z.string().optional().nullable(),
 
-  stripePublicKey: z.string().optional().nullable(),
-  stripeSecretKey: z.string().optional().nullable(),
-  stripeWebhookSecret: z.string().optional().nullable(),
-  pixDiscountPercent: z.string().optional(),
-
-  mpAccessToken: z.string().optional().nullable(),
 });
 
 export type UpdateStoreSettingsInput = z.infer<

@@ -90,7 +90,6 @@ export const createDirectOrder = authenticatedAction<
         shippingAddressId: addressId,
         totalPriceInCents: totalInCents,
         status: "pending",
-        stripeCheckoutSessionId: "",
       })
       .returning();
 

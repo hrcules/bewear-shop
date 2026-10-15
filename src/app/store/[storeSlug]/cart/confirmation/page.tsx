@@ -157,9 +157,6 @@ const ConfirmationPage = async ({ searchParams }: ConfirmationPageProps) => {
               freteInCents={freteInCents}
               totalInCents={totalInCents}
               products={products}
-              pixDiscountPercent={
-                enableOnlinePayments ? store?.pixDiscountPercent || 0 : 0
-              }
             />
           </div>
         </div>

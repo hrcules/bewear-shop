@@ -24,16 +24,12 @@ interface ProductItemProps {
   };
   textContainerClassName?: string;
   className?: string;
-  pixDiscountPercent?: number;
-  enableOnlinePayments?: boolean; // ✅ NOVO
 }
 
 const ProductItem = ({
   product,
   textContainerClassName,
   className,
-  pixDiscountPercent = 0,
-  enableOnlinePayments = false,
 }: ProductItemProps) => {
   const params = useParams();
   const pathname = usePathname();
@@ -51,14 +47,6 @@ const ProductItem = ({
   const originalPrice = firstVariant.priceInCents;
   const compareAtPrice = firstVariant.compareAtPriceInCents;
   const hasPromo = compareAtPrice && compareAtPrice > originalPrice;
-
-  const pixPrice =
-    pixDiscountPercent > 0
-      ? originalPrice - (originalPrice * pixDiscountPercent) / 100
-      : originalPrice;
-
-  // ✅ Só mostra o PIX se pagamentos online estiverem ativos
-  const showPixDiscount = enableOnlinePayments && pixDiscountPercent > 0;
 
   return (
     <Link
@@ -101,13 +89,6 @@ const ProductItem = ({
           <p className="text-primary truncate text-lg font-extrabold md:text-xl">
             {formatCentsToBRL(originalPrice)}
           </p>
-
-          {/* ✅ 3. Mostra o atrativo do PIX (se habilitado) */}
-          {showPixDiscount && (
-            <span className="mt-0.5 text-xs font-bold text-emerald-600">
-              ou {formatCentsToBRL(pixPrice)} no PIX
-            </span>
-          )}
         </div>
       </div>
     </Link>

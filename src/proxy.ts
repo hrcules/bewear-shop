@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const config = {
-  matcher: ["/((?!api/stripe|_next/|_static/|[\\w-]+\\.\\w+).*)"],
+  matcher: ["/((?!_next/|_static/|[\\w-]+\\.\\w+).*)"],
 };
 
 export default async function proxy(req: NextRequest) {
