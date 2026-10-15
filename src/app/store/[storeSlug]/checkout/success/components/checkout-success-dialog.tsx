@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import { Clock, MessageCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +22,8 @@ interface CheckoutSuccessDialogProps {
   storeName: string;
   orderNumber: number;
   orderTotalInCents: number;
+  /** Pedido do Mercado Pago ainda não confirmado pelo webhook. */
+  paymentPending?: boolean;
 }
 
 const CheckoutSuccessDialog = ({
@@ -28,7 +32,23 @@ const CheckoutSuccessDialog = ({
   storeName,
   orderNumber,
   orderTotalInCents,
+  paymentPending = false,
 }: CheckoutSuccessDialogProps) => {
+  const router = useRouter();
+
+  // O Mercado Pago pode redirecionar antes de o webhook confirmar o pagamento:
+  // reconsulta por ~1 minuto para a tela virar "Pedido efetuado!" sozinha.
+  useEffect(() => {
+    if (!paymentPending) return;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      router.refresh();
+      if (attempts >= 15) clearInterval(timer);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [paymentPending, router]);
+
   let whatsappUrl = "";
   if (!enableOnlinePayments && storePhone) {
     const cleanPhone = storePhone.replace(/\D/g, "");
@@ -42,21 +62,29 @@ const CheckoutSuccessDialog = ({
   return (
     <Dialog open={true} onOpenChange={() => {}}>
       <DialogContent className="max-w-[90%] rounded-[24px] p-6 text-center md:max-w-[500px] md:rounded-[32px] md:p-10">
-        <Image
-          src="/illustration.svg"
-          alt="Success"
-          width={300}
-          height={300}
-          className="mx-auto h-auto w-[200px] md:w-[260px]"
-          priority
-        />
+        {paymentPending ? (
+          <div className="bg-muted mx-auto flex h-24 w-24 items-center justify-center rounded-full">
+            <Clock className="text-muted-foreground h-12 w-12" />
+          </div>
+        ) : (
+          <Image
+            src="/illustration.svg"
+            alt="Success"
+            width={300}
+            height={300}
+            className="mx-auto h-auto w-[200px] md:w-[260px]"
+            priority
+          />
+        )}
 
         <DialogTitle className="mt-4 text-2xl font-bold md:mt-6 md:text-3xl">
-          Pedido efetuado!
+          {paymentPending ? "Aguardando pagamento" : "Pedido efetuado!"}
         </DialogTitle>
 
         <DialogDescription className="text-muted-foreground font-medium md:mx-auto md:max-w-[90%] md:text-base">
-          {enableOnlinePayments
+          {paymentPending
+            ? "Estamos aguardando a confirmação do seu pagamento. Se você já pagou, isso leva só alguns instantes. Para pagar ou ver o QR Code do Pix, acesse “Meus Pedidos”."
+            : enableOnlinePayments
             ? "Seu pedido foi realizado com sucesso. Você receberá um e-mail de confirmação em breve. Você pode acompanhar o status na seção de “Meus Pedidos”."
             : "Seu pedido foi reservado com sucesso! Para que a loja inicie o preparo e envio, por favor, solicite o link de pagamento via WhatsApp."}
         </DialogDescription>

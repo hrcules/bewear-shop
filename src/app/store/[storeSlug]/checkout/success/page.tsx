@@ -41,6 +41,9 @@ const CheckoutSuccessPage = async ({
         storeName={order.store.name}
         orderNumber={order.orderNumber}
         orderTotalInCents={order.totalPriceInCents}
+        paymentPending={
+          order.status === "pending" && order.paymentProvider === "mercadopago"
+        }
       />
     </>
   );
