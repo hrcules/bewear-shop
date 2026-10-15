@@ -7,10 +7,13 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { db } from "@/db";
-import { mpConnectionTable, mpOAuthStateTable } from "@/db/schema";
+import { mpConnectionTable, mpOAuthStateTable, storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { mpEnabled, oauthConfig } from "@/lib/mercadopago/config";
-import { storePaymentLock } from "@/lib/mercadopago/connection";
+import {
+  connectionToken,
+  storePaymentLock,
+} from "@/lib/mercadopago/connection";
 import { encrypt, hash } from "@/lib/mercadopago/security";
 import { tenantOwnerAction } from "@/lib/safe-action";
 
@@ -86,6 +89,31 @@ export const disconnectMercadoPago = tenantOwnerAction<
       .set({ status: "disconnected", updatedAt: new Date() })
       .where(eq(mpConnectionTable.storeId, ctx.storeId));
   });
+
+  revalidatePath("/admin/settings");
+  return { success: true };
+});
+
+/**
+ * Liga/desliga o Mercado Pago como forma de pagamento da loja.
+ * Só liga se existir uma conexão válida.
+ */
+export const setMercadoPagoCheckout = tenantOwnerAction<
+  boolean,
+  { success: boolean }
+>(async (enabled, ctx) => {
+  if (enabled) {
+    if (!mpEnabled()) throw new Error("Integração ainda não disponível.");
+    await connectionToken(ctx.storeId); // valida/renova o token
+  }
+
+  await db
+    .update(storeTable)
+    .set({
+      checkoutProvider: enabled ? "mercadopago" : "legacy",
+      updatedAt: new Date(),
+    })
+    .where(eq(storeTable.id, ctx.storeId));
 
   revalidatePath("/admin/settings");
   return { success: true };

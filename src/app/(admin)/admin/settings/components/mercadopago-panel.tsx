@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   connectMercadoPago,
   disconnectMercadoPago,
+  setMercadoPagoCheckout,
 } from "@/actions/mercadopago-connection";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ type Props = {
   sellerId: string | null;
   status: string | null;
   result?: string;
+  active: boolean;
 };
 
 export function MercadoPagoPanel({
@@ -30,6 +32,7 @@ export function MercadoPagoPanel({
   sellerId,
   status,
   result,
+  active,
 }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -42,6 +45,24 @@ export function MercadoPagoPanel({
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Não foi possível conectar.",
+        );
+      }
+    });
+  }
+
+  function toggle(enabled: boolean) {
+    start(async () => {
+      try {
+        await setMercadoPagoCheckout(enabled);
+        toast.success(
+          enabled
+            ? "Mercado Pago ativado para novas vendas."
+            : "Mercado Pago desativado.",
+        );
+        router.refresh();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Não foi possível alterar.",
         );
       }
     });
@@ -109,6 +130,15 @@ export function MercadoPagoPanel({
           <Button onClick={connect} disabled={pending || !available}>
             {connected ? "Reconectar" : "Conectar Mercado Pago"}
           </Button>
+          {connected && (
+            <Button
+              variant={active ? "outline" : "default"}
+              onClick={() => toggle(!active)}
+              disabled={pending}
+            >
+              {active ? "Desativar nas vendas" : "Ativar nas vendas"}
+            </Button>
+          )}
           {connected && (
             <Button variant="outline" onClick={disconnect} disabled={pending}>
               Desconectar

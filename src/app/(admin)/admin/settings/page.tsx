@@ -55,6 +55,7 @@ export default async function SettingsPage({
         sellerId={connection?.sellerId ?? null}
         status={connection?.status ?? null}
         result={mp}
+        active={store.checkoutProvider === "mercadopago"}
       />
     </div>
   );

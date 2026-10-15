@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 import { createCheckoutSession } from "@/actions/create-checkout-session";
+import { createMercadoPagoCheckout } from "@/actions/mercadopago-checkout";
 import { createDirectOrder } from "@/actions/create-direct-order";
 import { createPixPaymentAction } from "@/actions/create-pix-payment";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ interface FinishOrderButtonProps {
   quantity?: number;
   addressId?: string;
   enableOnlinePayments?: boolean;
+  checkoutProvider?: string;
 }
 
 const FinishOrderButton = ({
@@ -24,10 +26,12 @@ const FinishOrderButton = ({
   quantity,
   addressId,
   enableOnlinePayments = true,
+  checkoutProvider = "legacy",
 }: FinishOrderButtonProps) => {
   const router = useRouter();
   const finishOrderMutation = useFinishOrder();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const usesMercadoPago = enableOnlinePayments && checkoutProvider === "mercadopago";
 
   const [paymentMethod, setPaymentMethod] = useState<"card" | "pix">("card");
 
@@ -64,6 +68,12 @@ const FinishOrderButton = ({
         return;
       }
 
+      if (usesMercadoPago) {
+        const response = await createMercadoPagoCheckout({ orderId });
+        window.location.href = response.checkoutUrl;
+        return;
+      }
+
       if (paymentMethod === "card") {
         const response = await createCheckoutSession({ orderId });
 
@@ -96,7 +106,7 @@ const FinishOrderButton = ({
 
   return (
     <div className="space-y-6">
-      {enableOnlinePayments && (
+      {enableOnlinePayments && !usesMercadoPago && (
         <div className="space-y-3">
           <p className="text-sm font-medium">Como você prefere pagar?</p>
 
@@ -143,7 +153,9 @@ const FinishOrderButton = ({
           ? "Processando..."
           : !enableOnlinePayments
             ? "Enviar Pedido"
-            : paymentMethod === "card"
+            : usesMercadoPago
+              ? "Ir para o Pagamento"
+              : paymentMethod === "card"
               ? "Ir para o Pagamento"
               : "Gerar Código PIX"}
       </Button>
