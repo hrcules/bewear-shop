@@ -132,6 +132,19 @@ export const createMercadoPagoCheckout = authenticatedAction<
     }),
   );
 
+  // DIAGNÓSTICO TEMPORÁRIO (sem segredos): dados da preferência criada.
+  console.info("MP preferência criada", {
+    preferenceId: preference.id,
+    sellerIdSaved: connection.sellerId,
+    liveModeSaved: connection.liveMode,
+    tokenPrefix: connection.token.split("-")[0],
+    initPointHost: new URL(preference.init_point).host,
+    sandboxInitPointHost: preference.sandbox_init_point
+      ? new URL(preference.sandbox_init_point).host
+      : null,
+    testModeEnv: process.env.MP_TEST_MODE ?? null,
+  });
+
   // Em teste (live_mode=false) o checkout abre pelo init_point, que funcionou
   // nos testes manuais; sandbox_init_point fica só como informação.
   const checkoutUrl = preference.init_point;
