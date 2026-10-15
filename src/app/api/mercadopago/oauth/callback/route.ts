@@ -78,16 +78,6 @@ export async function GET(request: NextRequest) {
       }),
     );
 
-    // DIAGNÓSTICO TEMPORÁRIO (sem segredos): o que o OAuth devolveu.
-    console.info("MP OAuth token recebido", {
-      testModeEnv: testMode,
-      sentTestToken: testMode,
-      liveModeFromMp: token.live_mode,
-      tokenPrefix: token.access_token.split("-")[0],
-      sellerId: token.user_id,
-      scope: token.scope,
-    });
-
     // Em teste o token deve ser de sandbox; em produção, live.
     const expectedLiveMode = !testMode;
     if (token.live_mode !== undefined && token.live_mode !== expectedLiveMode) {

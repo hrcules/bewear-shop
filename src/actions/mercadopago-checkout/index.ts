@@ -14,7 +14,7 @@ import {
 } from "@/db/schema";
 import { calculateShipping } from "@/helpers/shipping";
 import { mpFetch } from "@/lib/mercadopago/api";
-import { storeOrigin } from "@/lib/mercadopago/config";
+import { appOrigin, storeOrigin } from "@/lib/mercadopago/config";
 import { connectionToken } from "@/lib/mercadopago/connection";
 import { authenticatedAction } from "@/lib/safe-action";
 
@@ -113,40 +113,18 @@ export const createMercadoPagoCheckout = authenticatedAction<
       body: {
         items: mpItems,
         external_reference: orderId,
-        // TEMPORÁRIO (diagnóstico do erro no checkout): preferência mínima,
-        // igual à que funcionou no teste manual. back_urls/auto_return/expires
-        // voltam depois, um de cada vez.
-        ...(process.env.MP_PREFERENCE_EXTRAS === "true"
-          ? {
-              back_urls: {
-                success: backUrl,
-                pending: backUrl,
-                failure: backUrl,
-              },
-              auto_return: "approved",
-              expires: true,
-              expiration_date_to: expiresAt.toISOString(),
-            }
-          : {}),
+        notification_url: `${appOrigin()}/api/mercadopago/checkout-webhook?storeId=${ctx.storeId}`,
+        back_urls: { success: backUrl, pending: backUrl, failure: backUrl },
+        auto_return: "approved",
+        expires: true,
+        // O Mercado Pago espera data com offset (America/Sao_Paulo, -03:00).
+        expiration_date_to: new Date(expiresAt.getTime() - 3 * 60 * 60 * 1000)
+          .toISOString()
+          .replace("Z", "-03:00"),
       },
     }),
   );
 
-  // DIAGNÓSTICO TEMPORÁRIO (sem segredos): dados da preferência criada.
-  console.info("MP preferência criada", {
-    preferenceId: preference.id,
-    sellerIdSaved: connection.sellerId,
-    liveModeSaved: connection.liveMode,
-    tokenPrefix: connection.token.split("-")[0],
-    initPointHost: new URL(preference.init_point).host,
-    sandboxInitPointHost: preference.sandbox_init_point
-      ? new URL(preference.sandbox_init_point).host
-      : null,
-    testModeEnv: process.env.MP_TEST_MODE ?? null,
-  });
-
-  // Em teste (live_mode=false) o checkout abre pelo init_point, que funcionou
-  // nos testes manuais; sandbox_init_point fica só como informação.
   const checkoutUrl = preference.init_point;
 
   const values = {

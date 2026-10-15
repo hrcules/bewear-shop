@@ -2,7 +2,9 @@ import {
   createCipheriv,
   createDecipheriv,
   createHash,
+  createHmac,
   randomBytes,
+  timingSafeEqual,
 } from "node:crypto";
 
 export function hash(value: string) {
@@ -54,4 +56,29 @@ export function decrypt(value: string, context: string) {
     decipher.update(Buffer.from(data, "base64url")),
     decipher.final(),
   ]).toString("utf8");
+}
+
+/** Valida o x-signature (ts + v1) das notificações do Mercado Pago. */
+export function validWebhookSignature(
+  dataId: string,
+  requestId: string | null,
+  signature: string | null,
+  secret: string,
+) {
+  if (!dataId || !requestId || !signature || !secret) return false;
+  const parts = Object.fromEntries(
+    signature.split(",").map((part) => part.trim().split("=")),
+  );
+  if (!/^\d+$/.test(parts.ts ?? "") || !/^[a-f0-9]{64}$/i.test(parts.v1 ?? "")) {
+    return false;
+  }
+  const expected = createHmac("sha256", secret)
+    .update(
+      `id:${dataId.toLowerCase()};request-id:${requestId};ts:${parts.ts};`,
+    )
+    .digest();
+  const received = Buffer.from(parts.v1, "hex");
+  return (
+    expected.length === received.length && timingSafeEqual(expected, received)
+  );
 }
