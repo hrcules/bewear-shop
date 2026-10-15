@@ -113,10 +113,21 @@ export const createMercadoPagoCheckout = authenticatedAction<
       body: {
         items: mpItems,
         external_reference: orderId,
-        back_urls: { success: backUrl, pending: backUrl, failure: backUrl },
-        auto_return: "approved",
-        expires: true,
-        expiration_date_to: expiresAt.toISOString(),
+        // TEMPORÁRIO (diagnóstico do erro no checkout): preferência mínima,
+        // igual à que funcionou no teste manual. back_urls/auto_return/expires
+        // voltam depois, um de cada vez.
+        ...(process.env.MP_PREFERENCE_EXTRAS === "true"
+          ? {
+              back_urls: {
+                success: backUrl,
+                pending: backUrl,
+                failure: backUrl,
+              },
+              auto_return: "approved",
+              expires: true,
+              expiration_date_to: expiresAt.toISOString(),
+            }
+          : {}),
       },
     }),
   );
