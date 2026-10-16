@@ -304,6 +304,12 @@ export async function notifyPixPending(orderId: string, notice: PendingPixNotice
     await sendCustomerPixPendingEmail({ ...base, reminder: false });
 
     const at = notice.expiresAt ? pixReminderTime(notice.expiresAt) : null;
+    if (!at) {
+      console.info("Mercado Pago: lembrete de Pix não agendado", {
+        orderId,
+        expiresAt: notice.expiresAt?.toISOString() ?? null,
+      });
+    }
     if (at) {
       await sendCustomerPixPendingEmail({
         ...base,

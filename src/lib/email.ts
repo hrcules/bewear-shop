@@ -427,6 +427,14 @@ export async function sendCustomerPixPendingEmail(input: PixPendingEmail) {
       const errorData = await response.text();
       throw new Error(`Erro Brevo: ${errorData}`);
     }
+
+    if (input.schedule) {
+      console.info("✅ Lembrete de Pix agendado no Brevo", {
+        batchId: input.schedule.batchId,
+        scheduledFor: input.schedule.at.toISOString(),
+        status: response.status,
+      });
+    }
   } catch (error) {
     console.error("❌ Erro ao enviar e-mail de Pix pendente:", error);
   }
