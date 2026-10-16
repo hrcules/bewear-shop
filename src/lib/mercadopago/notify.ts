@@ -13,7 +13,6 @@ import { storeOrigin } from "./config";
 import {
   sendCustomerReceiptEmail,
   sendCustomerRefundEmail,
-  sendCustomerRefundEmail,
   sendStoreOwnerPaymentAlertEmail,
   sendStoreOwnerReconnectEmail,
   sendStoreOwnerNotificationEmail,
