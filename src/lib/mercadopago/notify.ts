@@ -9,11 +9,13 @@ import {
   user,
 } from "@/db/schema";
 import { formatCentsToBRL } from "@/helpers/money";
+import { storeOrigin } from "./config";
 import {
   sendCustomerReceiptEmail,
   sendCustomerRefundEmail,
   sendCustomerRefundEmail,
   sendStoreOwnerPaymentAlertEmail,
+  sendStoreOwnerReconnectEmail,
   sendStoreOwnerNotificationEmail,
 } from "@/lib/email";
 
@@ -96,7 +98,8 @@ export type PaymentAlert =
   | { kind: "refunded" }
   | { kind: "charged_back" }
   | { kind: "partial_refund"; amountInCents: number }
-  | { kind: "dispute" };
+  | { kind: "dispute" }
+  | { kind: "review"; reason: string };
 
 /** Avisa o lojista (notificação + e-mail) de reembolso, chargeback ou disputa. Nunca lança. */
 export async function notifyPaymentAlert(orderId: string, alert: PaymentAlert) {
@@ -134,6 +137,10 @@ export async function notifyPaymentAlert(orderId: string, alert: PaymentAlert) {
         title = "↩️ Reembolso parcial";
         message = `O pedido ${ref} recebeu um reembolso parcial de ${formatCentsToBRL(alert.amountInCents)} no Mercado Pago. O status do pedido e o estoque não foram alterados.`;
         break;
+      case "review":
+        title = "🔎 Pagamento precisa de revisão";
+        message = `O pagamento do pedido ${ref} não foi confirmado automaticamente: ${alert.reason} Confira o pagamento no painel do Mercado Pago antes de enviar o pedido.`;
+        break;
       case "dispute":
         title = "⚠️ Disputa aberta no pagamento";
         message = `Foi aberta uma disputa (mediação) no pagamento do pedido ${ref}. Acompanhe e responda no painel do Mercado Pago.`;
@@ -170,7 +177,8 @@ export async function notifyPaymentAlert(orderId: string, alert: PaymentAlert) {
     }
 
     // O cliente só é avisado quando o dinheiro dele volta.
-    if (alert.kind !== "dispute" && order.shippingAddress?.email) {
+    const refundKinds = ["refunded", "charged_back", "partial_refund"];
+    if (refundKinds.includes(alert.kind) && order.shippingAddress?.email) {
       await sendCustomerRefundEmail(
         order.shippingAddress.email,
         order.shippingAddress.fullName,
@@ -188,6 +196,42 @@ export async function notifyPaymentAlert(orderId: string, alert: PaymentAlert) {
     console.error("Mercado Pago: falha ao avisar lojista de pagamento", {
       orderId,
       kind: alert.kind,
+      message: error instanceof Error ? error.message : "erro desconhecido",
+    });
+  }
+}
+
+/** Avisa o lojista que a conexão com o Mercado Pago precisa ser refeita. Nunca lança. */
+export async function notifyReconnectNeeded(storeId: string) {
+  try {
+    const store = await db.query.storeTable.findFirst({
+      where: eq(storeTable.id, storeId),
+    });
+    if (!store) return;
+
+    const owner = await db.query.user.findFirst({
+      where: eq(user.id, store.ownerId),
+    });
+    if (!owner) return;
+
+    await db.insert(notificationTable).values({
+      userId: owner.id,
+      title: "⚠️ Reconecte o Mercado Pago",
+      message:
+        "A conexão da sua loja com o Mercado Pago expirou ou foi revogada. Enquanto não for refeita, seus clientes não conseguem pagar online. Reconecte em Configurações.",
+      type: "payment_alert",
+    });
+
+    if (owner.email) {
+      await sendStoreOwnerReconnectEmail(
+        owner.email,
+        store.name,
+        `${storeOrigin(store.slug)}/admin/settings`,
+      );
+    }
+  } catch (error) {
+    console.error("Mercado Pago: falha ao avisar reconexão", {
+      storeId,
       message: error instanceof Error ? error.message : "erro desconhecido",
     });
   }

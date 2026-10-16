@@ -348,3 +348,67 @@ export async function sendCustomerRefundEmail(
     console.error("❌ Erro ao enviar aviso de reembolso ao cliente:", error);
   }
 }
+
+/** Avisa o lojista que a conexão com o Mercado Pago precisa ser refeita. */
+export async function sendStoreOwnerReconnectEmail(
+  ownerEmail: string,
+  storeName: string,
+  settingsUrl: string,
+) {
+  try {
+    const store = escapeHtml(storeName);
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "Notificações BEWEAR", email: SENDER_EMAIL },
+        to: [{ email: ownerEmail }],
+        subject: `⚠️ Reconecte o Mercado Pago da ${storeName}`,
+        htmlContent: `
+          <div style="background-color: #f4f4f7; padding: 24px 12px; font-family: sans-serif;">
+            <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #eaeaea;">
+              <div style="background-color: #8B5CF6; padding: 20px 28px;">
+                <p style="margin: 0; color: #ffffff; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;">BEWEAR · ${store}</p>
+              </div>
+              <div style="padding: 28px;">
+                <h2 style="margin: 0 0 12px 0; color: #222; font-size: 22px;">Sua conta Mercado Pago precisa ser reconectada</h2>
+                <p style="color: #555; line-height: 1.6; margin: 0 0 16px 0;">
+                  A autorização que a sua loja deu ao Mercado Pago expirou ou foi revogada.
+                  <strong>Enquanto ela não for refeita, seus clientes não conseguem pagar online</strong> na ${store}.
+                </p>
+                <div style="background-color: #fff7ed; border-left: 4px solid #d97706; padding: 14px 16px; border-radius: 6px; margin: 0 0 22px 0;">
+                  <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
+                    Pedidos já pagos não são afetados. Só novos pagamentos ficam bloqueados até a reconexão.
+                  </p>
+                </div>
+                <p style="color: #555; line-height: 1.6; margin: 0 0 8px 0; font-size: 14px;"><strong>Como resolver (1 minuto):</strong></p>
+                <ol style="color: #555; line-height: 1.8; font-size: 14px; padding-left: 20px; margin: 0 0 24px 0;">
+                  <li>Abra as configurações da loja no painel Admin.</li>
+                  <li>No cartão do Mercado Pago, clique em <strong>Conectar Mercado Pago</strong>.</li>
+                  <li>Faça login e autorize. Pronto!</li>
+                </ol>
+                <div style="text-align: center; margin: 0 0 8px 0;">
+                  <a href="${settingsUrl}" style="display: inline-block; background-color: #8B5CF6; color: #ffffff; text-decoration: none; font-weight: bold; padding: 14px 28px; border-radius: 8px; font-size: 15px;">Reconectar agora</a>
+                </div>
+              </div>
+              <div style="padding: 16px 28px; background-color: #fafafa; border-top: 1px solid #eaeaea;">
+                <p style="margin: 0; color: #999; font-size: 12px; line-height: 1.5;">Você recebeu este e-mail porque é o responsável pela loja ${store} na BEWEAR. Se o botão não funcionar, copie este endereço: ${settingsUrl}</p>
+              </div>
+            </div>
+          </div>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Erro Brevo: ${errorData}`);
+    }
+  } catch (error) {
+    console.error("❌ Erro ao enviar aviso de reconexão ao lojista:", error);
+  }
+}

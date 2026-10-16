@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -18,6 +18,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+import { MercadoPagoLogo } from "./mercadopago-logo";
 
 type Props = {
   available: boolean;
@@ -88,7 +90,7 @@ export function MercadoPagoPanel({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5" />
+          <MercadoPagoLogo className="h-6 w-6 object-contain" />
           Mercado Pago
         </CardTitle>
         <CardDescription>
@@ -120,15 +122,24 @@ export function MercadoPagoPanel({
               : "Nenhuma conta Mercado Pago conectada"}
           </p>
           {status === "reconnect" && (
-            <p className="text-muted-foreground mt-1 text-sm">
-              A conta precisa ser reconectada.
+            <p
+              role="alert"
+              className="mt-2 flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                A conexão expirou ou foi revogada. Seus clientes não conseguem
+                pagar online até você reconectar.
+              </span>
             </p>
           )}
         </div>
 
         <div className="flex gap-2">
           <Button onClick={connect} disabled={pending || !available}>
-            {connected ? "Reconectar" : "Conectar Mercado Pago"}
+            {status === "reconnect" || connected
+              ? "Reconectar"
+              : "Conectar Mercado Pago"}
           </Button>
           {connected && (
             <Button

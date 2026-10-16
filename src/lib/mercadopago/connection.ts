@@ -5,6 +5,7 @@ import { mpConnectionTable } from "@/db/schema";
 
 import { MpApiError, mpFetch, tokenSchema } from "./api";
 import { mpTestMode, oauthConfig } from "./config";
+import { notifyReconnectNeeded } from "./notify";
 import { decrypt, encrypt } from "./security";
 
 export const storePaymentLock = (storeId: string) =>
@@ -15,6 +16,7 @@ export const storePaymentLock = (storeId: string) =>
  * O lock de linha serializa renovações concorrentes (várias instâncias).
  */
 export async function connectionToken(storeId: string) {
+  let reconnectNeeded = false;
   const result = await db.transaction(async (tx) => {
     const [connection] = await tx
       .select()
@@ -72,11 +74,16 @@ export async function connectionToken(storeId: string) {
           .update(mpConnectionTable)
           .set({ status: "reconnect", updatedAt: new Date() })
           .where(eq(mpConnectionTable.storeId, storeId));
+        reconnectNeeded = true;
         return null;
       }
       throw error;
     }
   });
+
+  // Só quem fez a transição connected -> reconnect avisa (o lock de linha
+  // garante que as demais chamadas já encontram o status trocado).
+  if (reconnectNeeded) await notifyReconnectNeeded(storeId);
 
   if (!result) {
     throw new Error("Reconecte a conta Mercado Pago nas configurações da loja.");

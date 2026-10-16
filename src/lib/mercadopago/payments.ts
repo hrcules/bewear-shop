@@ -78,6 +78,12 @@ export async function processPayment(storeId: string, paymentId: string) {
         })
         .where(eq(mpCheckoutTable.orderId, orderId));
 
+    const flagReview = async (reason: string) => {
+      const first = checkout.status !== "review";
+      await record("review", reason);
+      if (first) alert = { kind: "review", reason };
+    };
+
     const restoreStock = async () => {
       const items = await tx
         .select()
@@ -147,15 +153,15 @@ export async function processPayment(storeId: string, paymentId: string) {
         String(payment.collector_id) === checkout.sellerId;
 
       if (!amountOk || !currencyOk || !collectorOk) {
-        await record("review", "Pagamento não confere com o pedido.");
+        await flagReview("Pagamento não confere com o pedido.");
         return;
       }
       if (order.status === "cancelled") {
-        await record("review", "Pagamento aprovado após cancelamento.");
+        await flagReview("O pagamento foi aprovado depois de o pedido ser cancelado.");
         return;
       }
       if (order.status === "refunded") {
-        await record("review", "Pagamento aprovado após reembolso.");
+        await flagReview("O pagamento foi aprovado depois de o pedido ser reembolsado.");
         return;
       }
 
