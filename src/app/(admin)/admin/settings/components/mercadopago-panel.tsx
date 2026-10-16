@@ -41,6 +41,15 @@ export function MercadoPagoPanel({
   const connected = status === "connected";
 
   function connect() {
+    // Trocar de conta muda para onde vão os próximos pagamentos.
+    if (
+      connected &&
+      !window.confirm(
+        "Você vai autorizar outra conta do Mercado Pago. Os próximos pagamentos da loja cairão na conta escolhida. Continuar?",
+      )
+    ) {
+      return;
+    }
     start(async () => {
       try {
         window.location.assign((await connectMercadoPago()).url);
@@ -138,12 +147,15 @@ export function MercadoPagoPanel({
         <div className="flex gap-2">
           <Button
             type="button"
+            variant={connected ? "outline" : "default"}
             onClick={connect}
             disabled={pending || !available}
           >
-            {status === "reconnect" || connected
-              ? "Reconectar"
-              : "Conectar Mercado Pago"}
+            {connected
+              ? "Alterar conta Mercado Pago"
+              : status === "reconnect"
+                ? "Reconectar"
+                : "Conectar Mercado Pago"}
           </Button>
           {connected && (
             <Button
