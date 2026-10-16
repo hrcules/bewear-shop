@@ -21,10 +21,6 @@ function authorized(request: NextRequest) {
 // A Vercel Cron envia "Authorization: Bearer $CRON_SECRET" automaticamente.
 export async function GET(request: NextRequest) {
   if (!authorized(request)) {
-    console.warn("Cron expire-mp-orders: acesso negado", {
-      secretConfigured: Boolean(process.env.CRON_SECRET),
-      authorizationHeaderSent: Boolean(request.headers.get("authorization")),
-    });
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
