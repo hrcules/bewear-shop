@@ -689,7 +689,6 @@ async function main() {
           userId: testCustomer.id,
           shippingAddressId: address.id,
           storeId: store.id,
-          stripeCheckoutSessionId: `cs_test_mock_${crypto.randomBytes(8).toString("hex")}`,
           status: randomStatus,
           orderNumber: orderNum++,
           totalPriceInCents: orderTotal,

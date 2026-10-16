@@ -85,8 +85,6 @@ export const storeTable = pgTable("store", {
     .notNull(),
   freeShippingThresholdInCents: integer("free_shipping_threshold_in_cents"),
 
-  pixDiscountPercent: integer("pix_discount_percent").default(0).notNull(),
-
   enableOnlinePayments: boolean("enable_online_payments")
     .default(true)
     .notNull(),
@@ -94,10 +92,6 @@ export const storeTable = pgTable("store", {
   checkoutProvider: text("checkout_provider").default("legacy").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
 
-  stripePublicKey: text("stripe_public_key"),
-  stripeSecretKey: text("stripe_secret_key"),
-  stripeWebhookSecret: text("stripe_webhook_secret"),
-  mpAccessToken: text("mp_access_token"),
   termsAcceptedAt: timestamp("terms_accepted_at"),
 
   ownerId: text("owner_id")
@@ -279,11 +273,6 @@ export const orderTable = pgTable("order", {
     .notNull()
     .references(() => storeTable.id, { onDelete: "cascade" }),
   paymentProvider: text("payment_provider").default("legacy").notNull(),
-  stripeCheckoutSessionId: text("stripe_checkout_session_id"),
-
-  pixQrCode: text("pix_qr_code"),
-  pixQrCodeBase64: text("pix_qr_code_base64"),
-  pixPaymentId: text("pix_payment_id"),
   status: text("status").notNull(),
   orderNumber: integer("order_number").notNull().unique(),
   totalPriceInCents: integer("total_price_in_cents").notNull(),
