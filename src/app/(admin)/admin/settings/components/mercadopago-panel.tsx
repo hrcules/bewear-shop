@@ -136,13 +136,18 @@ export function MercadoPagoPanel({
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={connect} disabled={pending || !available}>
+          <Button
+            type="button"
+            onClick={connect}
+            disabled={pending || !available}
+          >
             {status === "reconnect" || connected
               ? "Reconectar"
               : "Conectar Mercado Pago"}
           </Button>
           {connected && (
             <Button
+              type="button"
               variant={active ? "outline" : "default"}
               onClick={() => toggle(!active)}
               disabled={pending}
@@ -151,7 +156,12 @@ export function MercadoPagoPanel({
             </Button>
           )}
           {connected && (
-            <Button variant="outline" onClick={disconnect} disabled={pending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={disconnect}
+              disabled={pending}
+            >
               Desconectar
             </Button>
           )}

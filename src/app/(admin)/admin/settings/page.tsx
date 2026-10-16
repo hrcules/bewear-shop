@@ -48,14 +48,17 @@ export default async function SettingsPage({
         </p>
       </div>
 
-      <SettingsForm initialData={store} />
-
-      <MercadoPagoPanel
-        available={mpEnabled()}
-        sellerId={connection?.sellerId ?? null}
-        status={connection?.status ?? null}
-        result={mp}
-        active={store.checkoutProvider === "mercadopago"}
+      <SettingsForm
+        initialData={store}
+        afterSalesModel={
+          <MercadoPagoPanel
+            available={mpEnabled()}
+            sellerId={connection?.sellerId ?? null}
+            status={connection?.status ?? null}
+            result={mp}
+            active={store.checkoutProvider === "mercadopago"}
+          />
+        }
       />
     </div>
   );

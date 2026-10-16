@@ -41,6 +41,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
 interface SettingsFormProps {
+  /** Renderizado logo abaixo do card "Modelo de Vendas". */
+  afterSalesModel?: React.ReactNode;
   initialData: {
     id: string;
     name: string;
@@ -81,7 +83,10 @@ const formatPhone = (value: string) => {
   return v;
 };
 
-export function SettingsForm({ initialData }: SettingsFormProps) {
+export function SettingsForm({
+  initialData,
+  afterSalesModel,
+}: SettingsFormProps) {
   const [isPending, startTransition] = useTransition();
 
   const [logoPreview, setLogoPreview] = useState(initialData.logoUrl);
@@ -215,6 +220,8 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
             />
           </CardContent>
         </Card>
+
+        {afterSalesModel}
 
         <Card>
           <CardHeader>
