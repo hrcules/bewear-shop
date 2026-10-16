@@ -225,11 +225,14 @@ export default async function AdminOrdersPage({
   });
 
   const validOrders = allOrders.filter(
-    (order) => order.status !== "pending" && order.status !== "cancelled",
+    (order) =>
+      order.status !== "pending" &&
+      order.status !== "cancelled" &&
+      order.status !== "refunded",
   );
   const pendingOrders = allOrders.filter((order) => order.status === "pending");
   const cancelledOrders = allOrders.filter(
-    (order) => order.status === "cancelled",
+    (order) => order.status === "cancelled" || order.status === "refunded",
   );
 
   return (
@@ -258,7 +261,7 @@ export default async function AdminOrdersPage({
             ({pendingOrders.length})
           </TabsTrigger>
           <TabsTrigger value="cancelled">
-            Cancelados ({cancelledOrders.length})
+            Cancelados/Reembolsados ({cancelledOrders.length})
           </TabsTrigger>
         </TabsList>
 

@@ -87,7 +87,8 @@ export default function OrdersFilter() {
             <SelectItem value="paid">Pago (Preparando)</SelectItem>
             <SelectItem value="shipped">Enviado</SelectItem>
             <SelectItem value="delivered">Entregue</SelectItem>
-            <SelectItem value="canceled">Cancelado</SelectItem>
+            <SelectItem value="cancelled">Cancelado</SelectItem>
+            <SelectItem value="refunded">Reembolsado</SelectItem>
           </SelectContent>
         </Select>
       </div>

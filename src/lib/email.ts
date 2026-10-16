@@ -195,3 +195,41 @@ export async function sendStoreOwnerNotificationEmail(
     console.error("❌ Erro ao enviar email para o lojista:", error);
   }
 }
+
+/** Aviso simples ao lojista sobre um problema de pagamento (reembolso, disputa...). */
+export async function sendStoreOwnerPaymentAlertEmail(
+  ownerEmail: string,
+  subject: string,
+  title: string,
+  message: string,
+) {
+  try {
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "Notificações BEWEAR", email: SENDER_EMAIL },
+        to: [{ email: ownerEmail }],
+        subject,
+        htmlContent: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px; border-top: 5px solid #d97706;">
+            <h2 style="color: #333;">${title}</h2>
+            <p style="color: #555; line-height: 1.5;">${message}</p>
+            <p style="color: #555; font-size: 14px;">Acesse o seu painel Admin para ver o pedido e, se precisar, o painel do Mercado Pago para os detalhes do pagamento.</p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Erro Brevo: ${errorData}`);
+    }
+  } catch (error) {
+    console.error("❌ Erro ao enviar aviso de pagamento ao lojista:", error);
+  }
+}

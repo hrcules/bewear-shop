@@ -97,7 +97,12 @@ export default async function Home() {
     .where(
       and(
         eq(orderTable.storeId, store.id),
-        notInArray(orderTable.status, ["pending", "canceled"]),
+        notInArray(orderTable.status, [
+          "pending",
+          "canceled",
+          "cancelled",
+          "refunded",
+        ]),
       ),
     )
     .groupBy(productVariantTable.productId)

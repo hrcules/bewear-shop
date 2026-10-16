@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -11,6 +11,7 @@ import {
 import { formatCentsToBRL } from "@/helpers/money";
 import {
   sendCustomerReceiptEmail,
+  sendStoreOwnerPaymentAlertEmail,
   sendStoreOwnerNotificationEmail,
 } from "@/lib/email";
 
@@ -84,6 +85,90 @@ export async function notifyOrderPaid(orderId: string) {
   } catch (error) {
     console.error("Mercado Pago: falha ao notificar pedido pago", {
       orderId,
+      message: error instanceof Error ? error.message : "erro desconhecido",
+    });
+  }
+}
+
+export type PaymentAlert =
+  | { kind: "refunded" }
+  | { kind: "charged_back" }
+  | { kind: "partial_refund"; amountInCents: number }
+  | { kind: "dispute" };
+
+/** Avisa o lojista (notificação + e-mail) de reembolso, chargeback ou disputa. Nunca lança. */
+export async function notifyPaymentAlert(orderId: string, alert: PaymentAlert) {
+  try {
+    const order = await db.query.orderTable.findFirst({
+      where: eq(orderTable.id, orderId),
+    });
+    if (!order) return;
+
+    const store = await db.query.storeTable.findFirst({
+      where: eq(storeTable.id, order.storeId),
+    });
+    if (!store) return;
+
+    const owner = await db.query.user.findFirst({
+      where: eq(user.id, store.ownerId),
+    });
+    if (!owner) return;
+
+    const ref = `#${order.orderNumber} (${formatCentsToBRL(order.totalPriceInCents)})`;
+    let title: string;
+    let message: string;
+
+    switch (alert.kind) {
+      case "refunded":
+        title = "↩️ Pedido reembolsado";
+        message = `O pedido ${ref} foi reembolsado no Mercado Pago. O status virou "Reembolsado" e o estoque foi devolvido automaticamente.`;
+        break;
+      case "charged_back":
+        title = "⚠️ Chargeback no pedido";
+        message = `O comprador contestou o pagamento do pedido ${ref} com o banco ou cartão (chargeback) e o valor foi estornado. O estoque foi devolvido. Verifique no painel do Mercado Pago se é possível contestar.`;
+        break;
+      case "partial_refund":
+        title = "↩️ Reembolso parcial";
+        message = `O pedido ${ref} recebeu um reembolso parcial de ${formatCentsToBRL(alert.amountInCents)} no Mercado Pago. O status do pedido e o estoque não foram alterados.`;
+        break;
+      case "dispute":
+        title = "⚠️ Disputa aberta no pagamento";
+        message = `Foi aberta uma disputa (mediação) no pagamento do pedido ${ref}. Acompanhe e responda no painel do Mercado Pago.`;
+        break;
+    }
+
+    // Não repete o mesmo aviso se a notificação do Mercado Pago chegar de novo.
+    const [existing] = await db
+      .select({ id: notificationTable.id })
+      .from(notificationTable)
+      .where(
+        and(
+          eq(notificationTable.userId, owner.id),
+          eq(notificationTable.message, message),
+        ),
+      )
+      .limit(1);
+    if (existing) return;
+
+    await db.insert(notificationTable).values({
+      userId: owner.id,
+      title,
+      message,
+      type: "payment_alert",
+    });
+
+    if (owner.email) {
+      await sendStoreOwnerPaymentAlertEmail(
+        owner.email,
+        `${title} — Pedido #${order.orderNumber}`,
+        title,
+        message,
+      );
+    }
+  } catch (error) {
+    console.error("Mercado Pago: falha ao avisar lojista de pagamento", {
+      orderId,
+      kind: alert.kind,
       message: error instanceof Error ? error.message : "erro desconhecido",
     });
   }

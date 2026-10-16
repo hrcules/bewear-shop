@@ -11,7 +11,7 @@ import {
 
 import { mpFetch } from "./api";
 import { connectionToken, storePaymentLock } from "./connection";
-import { notifyOrderPaid } from "./notify";
+import { notifyOrderPaid, notifyPaymentAlert, type PaymentAlert } from "./notify";
 
 const paymentSchema = z.object({
   id: z.union([z.number(), z.string()]).transform(String),
@@ -20,7 +20,11 @@ const paymentSchema = z.object({
   transaction_amount: z.number(),
   currency_id: z.string().optional(),
   collector_id: z.union([z.number(), z.string()]).nullish(),
+  transaction_amount_refunded: z.number().nullish(),
 });
+
+// Pedidos que já foram pagos e ainda não foram revertidos.
+const PAID_STATUSES = ["paid", "processing", "shipped", "delivered"];
 
 /**
  * Consulta o pagamento direto na API do Mercado Pago (com o token do lojista)
@@ -38,6 +42,7 @@ export async function processPayment(storeId: string, paymentId: string) {
   if (!orderId || !z.string().uuid().safeParse(orderId).success) return;
 
   let paidNow = false;
+  let alert = null as PaymentAlert | null;
 
   await db.transaction(async (tx) => {
     await tx.execute(storePaymentLock(storeId));
@@ -61,9 +66,6 @@ export async function processPayment(storeId: string, paymentId: string) {
       .for("update");
     if (!order || order.storeId !== storeId) return;
 
-    // Já aprovado antes: notificações atrasadas/fora de ordem não mudam nada.
-    if (checkout.status === "approved") return;
-
     const record = (status: string, reviewReason: string | null = null) =>
       tx
         .update(mpCheckoutTable)
@@ -75,6 +77,65 @@ export async function processPayment(storeId: string, paymentId: string) {
           updatedAt: new Date(),
         })
         .where(eq(mpCheckoutTable.orderId, orderId));
+
+    const restoreStock = async () => {
+      const items = await tx
+        .select()
+        .from(orderItemTable)
+        .where(eq(orderItemTable.orderId, orderId));
+      for (const item of items) {
+        await tx
+          .update(productVariantTable)
+          .set({ stock: sql`${productVariantTable.stock} + ${item.quantity}` })
+          .where(eq(productVariantTable.id, item.productVariantId));
+      }
+    };
+
+    // Reembolso total ou chargeback: o dinheiro voltou ao comprador.
+    if (payment.status === "refunded" || payment.status === "charged_back") {
+      if (checkout.status === payment.status) return; // já tratado
+
+      const kind = payment.status;
+      if (order.status === "pending") {
+        // Pagamento revertido antes de o pedido ser marcado como pago.
+        await tx
+          .update(orderTable)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(eq(orderTable.id, orderId));
+        await restoreStock();
+      } else if (PAID_STATUSES.includes(order.status)) {
+        await tx
+          .update(orderTable)
+          .set({ status: "refunded", updatedAt: new Date() })
+          .where(eq(orderTable.id, orderId));
+        await restoreStock();
+        alert = { kind };
+      } else if (kind === "charged_back") {
+        alert = { kind }; // pedido já cancelado/reembolsado, mas vale avisar
+      }
+      await record(kind);
+      return;
+    }
+
+    // Já aprovado antes: notificações atrasadas/fora de ordem não mudam o
+    // pedido, mas avisamos o lojista de disputa e de reembolso parcial.
+    if (checkout.status === "approved") {
+      if (
+        payment.status === "in_mediation" &&
+        checkout.lastPaymentStatus !== "in_mediation"
+      ) {
+        await record("approved");
+        alert = { kind: "dispute" };
+      } else if (payment.status === "approved") {
+        const refundedInCents = Math.round(
+          (payment.transaction_amount_refunded ?? 0) * 100,
+        );
+        if (refundedInCents > 0) {
+          alert = { kind: "partial_refund", amountInCents: refundedInCents };
+        }
+      }
+      return;
+    }
 
     if (payment.status === "approved") {
       const amountOk =
@@ -91,6 +152,10 @@ export async function processPayment(storeId: string, paymentId: string) {
       }
       if (order.status === "cancelled") {
         await record("review", "Pagamento aprovado após cancelamento.");
+        return;
+      }
+      if (order.status === "refunded") {
+        await record("review", "Pagamento aprovado após reembolso.");
         return;
       }
 
@@ -111,16 +176,7 @@ export async function processPayment(storeId: string, paymentId: string) {
         .set({ status: "cancelled", updatedAt: new Date() })
         .where(eq(orderTable.id, orderId));
 
-      const items = await tx
-        .select()
-        .from(orderItemTable)
-        .where(eq(orderItemTable.orderId, orderId));
-      for (const item of items) {
-        await tx
-          .update(productVariantTable)
-          .set({ stock: sql`${productVariantTable.stock} + ${item.quantity}` })
-          .where(eq(productVariantTable.id, item.productVariantId));
-      }
+      await restoreStock();
       await record("cancelled");
       return;
     }
@@ -131,4 +187,5 @@ export async function processPayment(storeId: string, paymentId: string) {
   });
 
   if (paidNow) await notifyOrderPaid(orderId);
+  if (alert) await notifyPaymentAlert(orderId, alert);
 }

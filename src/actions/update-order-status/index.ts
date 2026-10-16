@@ -27,7 +27,17 @@ export const updateOrderStatusAction = tenantOwnerAction<
     );
   }
 
-  if (newStatus === "cancelled" && order.status !== "cancelled") {
+  if (order.status === "refunded" && newStatus !== "refunded") {
+    throw new Error(
+      "Não é possível alterar o status de um pedido já reembolsado.",
+    );
+  }
+
+  if (
+    newStatus === "cancelled" &&
+    order.status !== "cancelled" &&
+    order.status !== "refunded"
+  ) {
     const orderItems = await db.query.orderItemTable.findMany({
       where: eq(orderItemTable.orderId, orderId),
     });
