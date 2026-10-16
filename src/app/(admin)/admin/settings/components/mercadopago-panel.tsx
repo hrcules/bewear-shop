@@ -90,7 +90,8 @@ export function MercadoPagoPanel({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MercadoPagoLogo />
+          <MercadoPagoLogo className="h-6 w-auto object-contain" />
+          Mercado Pago
         </CardTitle>
         <CardDescription>
           Conecte sua conta Mercado Pago para receber as vendas diretamente
