@@ -233,3 +233,118 @@ export async function sendStoreOwnerPaymentAlertEmail(
     console.error("❌ Erro ao enviar aviso de pagamento ao lojista:", error);
   }
 }
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+/** Avisa o cliente de que o valor do pedido foi estornado/reembolsado. */
+export async function sendCustomerRefundEmail(
+  customerEmail: string,
+  customerName: string,
+  orderNumber: number,
+  storeName: string,
+  refundedFormatted: string,
+  partial: boolean,
+) {
+  try {
+    const name = escapeHtml(customerName);
+    const store = escapeHtml(storeName);
+    const title = partial ? "Reembolso parcial realizado" : "Seu pagamento foi estornado";
+    const intro = partial
+      ? `Fizemos um reembolso parcial de <strong>${refundedFormatted}</strong> referente ao seu pedido <strong>#${orderNumber}</strong> na ${store}.`
+      : `O valor de <strong>${refundedFormatted}</strong> referente ao seu pedido <strong>#${orderNumber}</strong> na ${store} foi estornado.`;
+
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: storeName, email: SENDER_EMAIL },
+        to: [{ email: customerEmail, name: customerName }],
+        subject: `${title} — Pedido #${orderNumber}`,
+        htmlContent: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px; border-top: 5px solid #8B5CF6;">
+            <h2 style="color: #333;">${title}</h2>
+            <p style="color: #555; line-height: 1.5;">Olá, ${name}!</p>
+            <p style="color: #555; line-height: 1.5;">${intro}</p>
+            <p style="color: #555; line-height: 1.5;">O valor volta pelo mesmo meio de pagamento usado na compra. O prazo para aparecer depende do banco ou da operadora do cartão: no Pix costuma ser rápido, e no cartão pode aparecer na fatura seguinte.</p>
+            <p style="color: #555; font-size: 14px;">Em caso de dúvidas, entre em contato diretamente com a ${store}.</p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Erro Brevo: ${errorData}`);
+    }
+  } catch (error) {
+    console.error("❌ Erro ao enviar e-mail de estorno ao cliente:", error);
+  }
+}
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+/** Avisa o cliente que o pagamento foi estornado (total ou parcialmente). */
+export async function sendCustomerRefundEmail(
+  customerEmail: string,
+  customerName: string,
+  orderNumber: number,
+  storeName: string,
+  amountFormatted: string,
+  partial: boolean,
+) {
+  try {
+    const firstName = escapeHtml(customerName.split(" ")[0] || "cliente");
+    const store = escapeHtml(storeName);
+
+    const subject = partial
+      ? `Reembolso parcial do Pedido #${orderNumber} - ${storeName}`
+      : `Pagamento estornado - Pedido #${orderNumber} - ${storeName}`;
+
+    const intro = partial
+      ? `Fizemos um reembolso parcial de <strong>${amountFormatted}</strong> referente ao seu Pedido #${orderNumber}.`
+      : `O pagamento de <strong>${amountFormatted}</strong> do seu Pedido #${orderNumber} foi estornado e o pedido foi marcado como reembolsado.`;
+
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: `Equipe ${storeName}`, email: SENDER_EMAIL },
+        to: [{ email: customerEmail, name: customerName }],
+        subject,
+        htmlContent: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+            <h2 style="color: #333;">Olá, ${firstName}!</h2>
+            <p style="color: #555; line-height: 1.5;">${intro}</p>
+            <p style="color: #555; line-height: 1.5;">O valor volta pela mesma forma de pagamento usada na compra. No Pix, costuma aparecer em poucos minutos; no cartão, o prazo para aparecer na fatura depende do seu banco e pode levar até algumas faturas.</p>
+            <p style="color: #555; font-size: 14px;">Se tiver qualquer dúvida, fale diretamente com a ${store}. Você também pode ver os seus pedidos na aba "Meus Pedidos" no site da loja.</p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Erro Brevo: ${errorData}`);
+    }
+  } catch (error) {
+    console.error("❌ Erro ao enviar aviso de reembolso ao cliente:", error);
+  }
+}

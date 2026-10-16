@@ -11,6 +11,8 @@ import {
 import { formatCentsToBRL } from "@/helpers/money";
 import {
   sendCustomerReceiptEmail,
+  sendCustomerRefundEmail,
+  sendCustomerRefundEmail,
   sendStoreOwnerPaymentAlertEmail,
   sendStoreOwnerNotificationEmail,
 } from "@/lib/email";
@@ -101,6 +103,7 @@ export async function notifyPaymentAlert(orderId: string, alert: PaymentAlert) {
   try {
     const order = await db.query.orderTable.findFirst({
       where: eq(orderTable.id, orderId),
+      with: { shippingAddress: true },
     });
     if (!order) return;
 
@@ -163,6 +166,22 @@ export async function notifyPaymentAlert(orderId: string, alert: PaymentAlert) {
         `${title} — Pedido #${order.orderNumber}`,
         title,
         message,
+      );
+    }
+
+    // O cliente só é avisado quando o dinheiro dele volta.
+    if (alert.kind !== "dispute" && order.shippingAddress?.email) {
+      await sendCustomerRefundEmail(
+        order.shippingAddress.email,
+        order.shippingAddress.fullName,
+        order.orderNumber,
+        store.name,
+        formatCentsToBRL(
+          alert.kind === "partial_refund"
+            ? alert.amountInCents
+            : order.totalPriceInCents,
+        ),
+        alert.kind === "partial_refund",
       );
     }
   } catch (error) {
