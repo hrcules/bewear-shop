@@ -13,9 +13,10 @@ import {
   storeTable,
 } from "@/db/schema";
 import { calculateShipping } from "@/helpers/shipping";
-import { mpFetch } from "@/lib/mercadopago/api";
+import { MpApiError, mpFetch } from "@/lib/mercadopago/api";
 import { appOrigin, storeOrigin } from "@/lib/mercadopago/config";
 import { connectionToken } from "@/lib/mercadopago/connection";
+import { buildPayer } from "@/lib/mercadopago/payer";
 import { authenticatedAction } from "@/lib/safe-action";
 
 const inputSchema = z.object({ orderId: z.string().uuid() });
@@ -39,6 +40,7 @@ export const createMercadoPagoCheckout = authenticatedAction<
 
   const order = await db.query.orderTable.findFirst({
     where: eq(orderTable.id, orderId),
+    with: { shippingAddress: true },
   });
   if (!order || order.userId !== ctx.userId || order.storeId !== ctx.storeId) {
     throw new Error("Pedido não encontrado ou não autorizado.");
@@ -124,23 +126,50 @@ export const createMercadoPagoCheckout = authenticatedAction<
   const backUrl = `${origin}/checkout/success?orderId=${orderId}`;
   const expiresAt = new Date(Date.now() + PREFERENCE_TTL_MS);
 
-  const preference = preferenceSchema.parse(
-    await mpFetch("/checkout/preferences", {
-      token: connection.token,
-      body: {
-        items: mpItems,
-        external_reference: orderId,
-        notification_url: `${appOrigin()}/api/mercadopago/checkout-webhook?storeId=${ctx.storeId}`,
-        back_urls: { success: backUrl, pending: backUrl, failure: backUrl },
-        auto_return: "approved",
-        expires: true,
-        // O Mercado Pago espera data com offset (America/Sao_Paulo, -03:00).
-        expiration_date_to: new Date(expiresAt.getTime() - 3 * 60 * 60 * 1000)
-          .toISOString()
-          .replace("Z", "-03:00"),
-      },
-    }),
-  );
+  const preferenceBody = {
+    items: mpItems,
+    external_reference: orderId,
+    notification_url: `${appOrigin()}/api/mercadopago/checkout-webhook?storeId=${ctx.storeId}`,
+    back_urls: { success: backUrl, pending: backUrl, failure: backUrl },
+    auto_return: "approved",
+    expires: true,
+    // O Mercado Pago espera data com offset (America/Sao_Paulo, -03:00).
+    expiration_date_to: new Date(expiresAt.getTime() - 3 * 60 * 60 * 1000)
+      .toISOString()
+      .replace("Z", "-03:00"),
+  };
+  const payer = order.shippingAddress
+    ? buildPayer(order.shippingAddress)
+    : undefined;
+
+  async function createPreference(body: Record<string, unknown>) {
+    return preferenceSchema.parse(
+      await mpFetch("/checkout/preferences", {
+        token: connection.token,
+        body,
+      }),
+    );
+  }
+
+  let preference: z.infer<typeof preferenceSchema>;
+  try {
+    preference = await createPreference({
+      ...preferenceBody,
+      ...(payer ? { payer } : {}),
+    });
+  } catch (error) {
+    // Os dados do comprador só ajudam: se o Mercado Pago recusar algum campo,
+    // o pagamento não pode parar. Tenta de novo sem eles.
+    if (!payer || !(error instanceof MpApiError) || error.status !== 400) {
+      throw error;
+    }
+    console.warn("Mercado Pago: preferência recusada com dados do comprador", {
+      orderId,
+      status: error.status,
+      message: error.message,
+    });
+    preference = await createPreference(preferenceBody);
+  }
 
   const checkoutUrl = preference.init_point;
 
