@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
 import { orderTable, orderItemTable, productVariantTable } from "@/db/schema";
+import { cancelPixReminder } from "@/lib/mercadopago/notify";
 import { tenantOwnerAction } from "@/lib/safe-action";
 
 export const updateOrderStatusAction = tenantOwnerAction<
@@ -56,6 +57,10 @@ export const updateOrderStatusAction = tenantOwnerAction<
     .update(orderTable)
     .set({ status: newStatus })
     .where(eq(orderTable.id, orderId));
+
+  if (order.status === "pending" && newStatus !== "pending") {
+    await cancelPixReminder(orderId);
+  }
 
   revalidatePath("/admin/orders");
   revalidatePath("/orders");

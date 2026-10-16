@@ -11,6 +11,8 @@ import {
 import { formatCentsToBRL } from "@/helpers/money";
 import { storeOrigin } from "./config";
 import {
+  cancelScheduledEmail,
+  sendCustomerPixPendingEmail,
   sendCustomerReceiptEmail,
   sendCustomerRefundEmail,
   sendStoreOwnerPaymentAlertEmail,
@@ -234,4 +236,91 @@ export async function notifyReconnectNeeded(storeId: string) {
       message: error instanceof Error ? error.message : "erro desconhecido",
     });
   }
+}
+
+const HOUR = 60 * 60 * 1000;
+// Brasil sem horário de verão: horário local = UTC-3.
+const localDate = (date: Date) => new Date(date.getTime() - 3 * HOUR);
+
+/**
+ * Horário do lembrete: ~4h antes de o Pix expirar, mas sem acordar o cliente
+ * (fora de 8h-21h vai para 20h). Retorna null se já passou ou está longe
+ * demais (o Brevo agenda no máximo 72h à frente).
+ */
+export function pixReminderTime(expiresAt: Date, now = new Date()) {
+  let at = new Date(expiresAt.getTime() - 4 * HOUR);
+  const local = localDate(at);
+  const hour = local.getUTCHours();
+  if (hour >= 21 || hour < 8) {
+    local.setUTCHours(20, 0, 0, 0);
+    if (hour < 8) local.setUTCDate(local.getUTCDate() - 1);
+    at = new Date(local.getTime() + 3 * HOUR);
+  }
+  if (at.getTime() < now.getTime() + 30 * 60 * 1000) return null;
+  if (at.getTime() > now.getTime() + 71 * HOUR) return null;
+  return at;
+}
+
+export type PendingPixNotice = {
+  expiresAt: Date | null;
+  pixCode: string | null;
+};
+
+/** Avisa o cliente que o Pix aguarda pagamento e agenda o lembrete. Nunca lança. */
+export async function notifyPixPending(orderId: string, notice: PendingPixNotice) {
+  try {
+    const order = await db.query.orderTable.findFirst({
+      where: eq(orderTable.id, orderId),
+      with: { shippingAddress: true },
+    });
+    if (!order?.shippingAddress?.email) return;
+
+    const store = await db.query.storeTable.findFirst({
+      where: eq(storeTable.id, order.storeId),
+    });
+    if (!store) return;
+
+    const base = {
+      customerEmail: order.shippingAddress.email,
+      customerName: order.shippingAddress.fullName,
+      orderNumber: order.orderNumber,
+      storeName: store.name,
+      amountFormatted: formatCentsToBRL(order.totalPriceInCents),
+      expiresLabel: notice.expiresAt
+        ? new Intl.DateTimeFormat("pt-BR", {
+            timeZone: "America/Sao_Paulo",
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+            .format(notice.expiresAt)
+            .replace(",", " às")
+        : null,
+      pixCode: notice.pixCode,
+      ordersUrl: `${storeOrigin(store.slug)}/orders`,
+    };
+
+    await sendCustomerPixPendingEmail({ ...base, reminder: false });
+
+    const at = notice.expiresAt ? pixReminderTime(notice.expiresAt) : null;
+    if (at) {
+      await sendCustomerPixPendingEmail({
+        ...base,
+        reminder: true,
+        // O ID do pedido (UUID) identifica o envio para podermos cancelá-lo.
+        schedule: { at, batchId: orderId },
+      });
+    }
+  } catch (error) {
+    console.error("Mercado Pago: falha ao avisar Pix pendente", {
+      orderId,
+      message: error instanceof Error ? error.message : "erro desconhecido",
+    });
+  }
+}
+
+/** Cancela o lembrete agendado (pedido pago, cancelado ou reembolsado). Nunca lança. */
+export async function cancelPixReminder(orderId: string) {
+  await cancelScheduledEmail(orderId);
 }

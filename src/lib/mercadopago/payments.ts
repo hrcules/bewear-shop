@@ -11,7 +11,14 @@ import {
 
 import { mpFetch } from "./api";
 import { connectionToken, storePaymentLock } from "./connection";
-import { notifyOrderPaid, notifyPaymentAlert, type PaymentAlert } from "./notify";
+import {
+  cancelPixReminder,
+  notifyOrderPaid,
+  notifyPaymentAlert,
+  notifyPixPending,
+  type PaymentAlert,
+  type PendingPixNotice,
+} from "./notify";
 
 const paymentSchema = z.object({
   id: z.union([z.number(), z.string()]).transform(String),
@@ -21,6 +28,15 @@ const paymentSchema = z.object({
   currency_id: z.string().optional(),
   collector_id: z.union([z.number(), z.string()]).nullish(),
   transaction_amount_refunded: z.number().nullish(),
+  payment_method_id: z.string().optional(),
+  date_of_expiration: z.string().nullish(),
+  point_of_interaction: z
+    .object({
+      transaction_data: z
+        .object({ qr_code: z.string().nullish() })
+        .nullish(),
+    })
+    .nullish(),
 });
 
 // Pedidos que já foram pagos e ainda não foram revertidos.
@@ -43,6 +59,8 @@ export async function processPayment(storeId: string, paymentId: string) {
 
   let paidNow = false;
   let alert = null as PaymentAlert | null;
+  let pixNotice = null as PendingPixNotice | null;
+  let settled = false; // pedido saiu de "pendente": o lembrete não faz mais sentido
 
   await db.transaction(async (tx) => {
     await tx.execute(storePaymentLock(storeId));
@@ -104,6 +122,7 @@ export async function processPayment(storeId: string, paymentId: string) {
       const kind = payment.status;
       if (order.status === "pending") {
         // Pagamento revertido antes de o pedido ser marcado como pago.
+        settled = true;
         await tx
           .update(orderTable)
           .set({ status: "cancelled", updatedAt: new Date() })
@@ -171,12 +190,14 @@ export async function processPayment(storeId: string, paymentId: string) {
           .set({ status: "paid", updatedAt: new Date() })
           .where(eq(orderTable.id, orderId));
         paidNow = true;
+        settled = true;
       }
       await record("approved");
       return;
     }
 
     if (payment.status === "cancelled" && order.status === "pending") {
+      settled = true;
       await tx
         .update(orderTable)
         .set({ status: "cancelled", updatedAt: new Date() })
@@ -187,11 +208,29 @@ export async function processPayment(storeId: string, paymentId: string) {
       return;
     }
 
+    // Pix recém-gerado: avisa o cliente (uma vez) e agenda o lembrete.
+    if (
+      payment.status === "pending" &&
+      payment.payment_method_id === "pix" &&
+      order.status === "pending" &&
+      checkout.lastPaymentStatus !== "pending"
+    ) {
+      pixNotice = {
+        expiresAt: payment.date_of_expiration
+          ? new Date(payment.date_of_expiration)
+          : null,
+        pixCode:
+          payment.point_of_interaction?.transaction_data?.qr_code ?? null,
+      };
+    }
+
     // rejected/pending/in_process etc.: o comprador pode tentar de novo na
     // mesma preferência, então só registramos o último estado.
     await record(checkout.status, checkout.reviewReason);
   });
 
+  if (settled) await cancelPixReminder(orderId);
+  if (pixNotice) await notifyPixPending(orderId, pixNotice);
   if (paidNow) await notifyOrderPaid(orderId);
   if (alert) await notifyPaymentAlert(orderId, alert);
 }

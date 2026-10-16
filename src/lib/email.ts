@@ -353,3 +353,96 @@ export async function sendStoreOwnerReconnectEmail(
     console.error("❌ Erro ao enviar aviso de reconexão ao lojista:", error);
   }
 }
+
+export type PixPendingEmail = {
+  customerEmail: string;
+  customerName: string;
+  orderNumber: number;
+  storeName: string;
+  amountFormatted: string;
+  expiresLabel: string | null;
+  pixCode: string | null;
+  ordersUrl: string;
+  reminder: boolean;
+  /** Agenda o envio (até 72h à frente). `batchId` permite cancelar depois. */
+  schedule?: { at: Date; batchId: string };
+};
+
+/** E-mail "Pix aguardando pagamento" (imediato) ou o lembrete (agendado). */
+export async function sendCustomerPixPendingEmail(input: PixPendingEmail) {
+  try {
+    const firstName = escapeHtml(input.customerName.split(" ")[0] || "cliente");
+    const store = escapeHtml(input.storeName);
+    const when = input.expiresLabel
+      ? ` O Pix vale até <strong>${escapeHtml(input.expiresLabel)}</strong>; depois disso o pedido é cancelado automaticamente.`
+      : "";
+
+    const title = input.reminder
+      ? "Seu Pix está perto de expirar"
+      : "Seu pedido está aguardando o pagamento";
+    const intro = input.reminder
+      ? `O Pix do seu Pedido #${input.orderNumber} na ${store}, no valor de <strong>${input.amountFormatted}</strong>, ainda não foi pago.${when}`
+      : `Seu Pedido #${input.orderNumber} na ${store} foi reservado e aguarda o pagamento de <strong>${input.amountFormatted}</strong> via Pix.${when}`;
+    const subject = input.reminder
+      ? `Lembrete: seu Pix do Pedido #${input.orderNumber} está perto de expirar - ${input.storeName}`
+      : `Pix aguardando pagamento - Pedido #${input.orderNumber} - ${input.storeName}`;
+
+    const codeBlock = input.pixCode
+      ? `<p style="color: #555; line-height: 1.5; margin: 16px 0 6px 0;">Pix copia e cola:</p>
+         <div style="background-color: #f9f9f9; border: 1px dashed #cfcfcf; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; color: #333; word-break: break-all;">${escapeHtml(input.pixCode)}</div>`
+      : "";
+
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: `Equipe ${input.storeName}`, email: SENDER_EMAIL },
+        to: [{ email: input.customerEmail, name: input.customerName }],
+        subject,
+        htmlContent: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px; border-top: 5px solid #8B5CF6;">
+            <h2 style="color: #333;">${title}, ${firstName}!</h2>
+            <p style="color: #555; line-height: 1.5;">${intro}</p>
+            ${codeBlock}
+            <div style="text-align: center; margin: 24px 0 8px 0;">
+              <a href="${input.ordersUrl}" style="display: inline-block; background-color: #8B5CF6; color: #ffffff; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; font-size: 15px;">Ver meu pedido e o QR Code</a>
+            </div>
+            <p style="color: #999; font-size: 12px; line-height: 1.5;">Se você já pagou, pode ignorar este e-mail. A confirmação chega assim que o pagamento for identificado.</p>
+          </div>
+        `,
+        ...(input.schedule
+          ? {
+              scheduledAt: input.schedule.at.toISOString(),
+              batchId: input.schedule.batchId,
+            }
+          : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Erro Brevo: ${errorData}`);
+    }
+  } catch (error) {
+    console.error("❌ Erro ao enviar e-mail de Pix pendente:", error);
+  }
+}
+
+/** Cancela um envio agendado (404 = já enviado ou inexistente: tudo bem). */
+export async function cancelScheduledEmail(batchId: string) {
+  try {
+    const response = await fetch(
+      `https://api.brevo.com/v3/smtp/email/${encodeURIComponent(batchId)}`,
+      { method: "DELETE", headers: { "api-key": BREVO_API_KEY } },
+    );
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Erro Brevo ${response.status}`);
+    }
+  } catch (error) {
+    console.error("❌ Erro ao cancelar e-mail agendado:", error);
+  }
+}

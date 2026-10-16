@@ -12,6 +12,7 @@ import {
 
 import { mpFetch } from "./api";
 import { connectionToken, storePaymentLock } from "./connection";
+import { cancelPixReminder } from "./notify";
 import { processPayment } from "./payments";
 
 // Folga depois que a preferência expira (Pix gerado no fim do prazo ainda vale).
@@ -27,6 +28,12 @@ const paymentSchema = z.object({
 
 /** Cancela o pedido (se ainda pendente) e devolve o estoque. */
 async function cancelPending(orderId: string, storeId: string) {
+  const cancelled = await cancelPendingInTransaction(orderId, storeId);
+  if (cancelled) await cancelPixReminder(orderId);
+  return cancelled;
+}
+
+async function cancelPendingInTransaction(orderId: string, storeId: string) {
   return db.transaction(async (tx) => {
     await tx.execute(storePaymentLock(storeId));
 
