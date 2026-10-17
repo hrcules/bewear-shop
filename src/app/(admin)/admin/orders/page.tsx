@@ -140,6 +140,7 @@ function OrdersList({
                 </div>
                 <p className="text-muted-foreground text-sm">
                   {new Date(order.createdAt).toLocaleDateString("pt-BR", {
+                    timeZone: "America/Sao_Paulo",
                     day: "2-digit",
                     month: "long",
                     year: "numeric",
@@ -327,18 +328,18 @@ export default async function AdminOrdersPage({
       <Tabs defaultValue="valid" className="w-full">
         <TabsList
           variant="line"
-          className="grid w-full grid-cols-3 md:w-[600px]"
+          className="h-auto w-full flex-wrap justify-start gap-x-2 gap-y-1 md:w-fit"
         >
-          <TabsTrigger value="valid">
+          <TabsTrigger value="valid" className="h-9 flex-none px-4">
             Confirmados ({validOrders.length})
           </TabsTrigger>
-          <TabsTrigger value="pending">
+          <TabsTrigger value="pending" className="h-9 flex-none px-4">
             {store.enableOnlinePayments
               ? "Carrinhos Abandonados"
               : "Aguardando Pagto"}{" "}
             ({pendingOrders.length})
           </TabsTrigger>
-          <TabsTrigger value="cancelled">
+          <TabsTrigger value="cancelled" className="h-9 flex-none px-4">
             Cancelados/Reembolsados ({cancelledOrders.length})
           </TabsTrigger>
         </TabsList>

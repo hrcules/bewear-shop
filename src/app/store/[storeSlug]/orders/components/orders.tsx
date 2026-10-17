@@ -84,8 +84,13 @@ const Orders = ({ orders, onlinePayments }: OrdersProps) => {
                   <p className="text-accent-foreground text-sm">
                     Pedido realizado em:{" "}
                     <span className="font-medium">
-                      {order.createdAt.toLocaleDateString()} às{" "}
-                      {order.createdAt.toLocaleTimeString()}
+                      {order.createdAt.toLocaleDateString("pt-BR", {
+                        timeZone: "America/Sao_Paulo",
+                      })}{" "}
+                      às{" "}
+                      {order.createdAt.toLocaleTimeString("pt-BR", {
+                        timeZone: "America/Sao_Paulo",
+                      })}
                     </span>
                   </p>
 

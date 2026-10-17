@@ -53,6 +53,8 @@ const CheckoutSuccessPage = async ({
   return (
     <>
       <Header />
+      {/* Ocupa a tela para o rodapé da loja não aparecer atrás do diálogo. */}
+      <div className="min-h-screen" aria-hidden />
       <CheckoutSuccessDialog
         enableOnlinePayments={order.store.enableOnlinePayments ?? true}
         storePhone={order.store.whatsapp}

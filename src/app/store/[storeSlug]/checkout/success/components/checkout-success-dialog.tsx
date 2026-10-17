@@ -60,7 +60,13 @@ const CheckoutSuccessDialog = ({
   }
 
   return (
-    <Dialog open={true} onOpenChange={() => {}}>
+    <Dialog
+      open={true}
+      onOpenChange={(open) => {
+        // Fechar (X, Esc ou clique fora) leva o cliente para onde faz sentido.
+        if (!open) router.push(paymentPending ? "/orders" : "/");
+      }}
+    >
       <DialogContent className="max-w-[90%] rounded-[24px] p-6 text-center md:max-w-[500px] md:rounded-[32px] md:p-10">
         {paymentPending ? (
           <div className="bg-muted mx-auto flex h-24 w-24 items-center justify-center rounded-full">
