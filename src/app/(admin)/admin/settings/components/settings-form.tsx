@@ -127,6 +127,9 @@ export function SettingsForm({
     },
   });
 
+  // O card do Mercado Pago só aparece com pagamentos online ativados.
+  const onlinePaymentsEnabled = form.watch("enableOnlinePayments");
+
   const onSubmit = (data: UpdateStoreSettingsInput) => {
     const formData = new FormData();
     formData.append("name", data.name);
@@ -221,7 +224,7 @@ export function SettingsForm({
           </CardContent>
         </Card>
 
-        {afterSalesModel}
+        {onlinePaymentsEnabled && afterSalesModel}
 
         <Card>
           <CardHeader>
