@@ -29,6 +29,9 @@ const paymentSchema = z.object({
   collector_id: z.union([z.number(), z.string()]).nullish(),
   transaction_amount_refunded: z.number().nullish(),
   payment_method_id: z.string().optional(),
+  payment_type_id: z.string().optional(),
+  installments: z.number().nullish(),
+  date_approved: z.string().nullish(),
   date_of_expiration: z.string().nullish(),
   point_of_interaction: z
     .object({
@@ -84,10 +87,23 @@ export async function processPayment(storeId: string, paymentId: string) {
       .for("update");
     if (!order || order.storeId !== storeId) return;
 
-    const record = (status: string, reviewReason: string | null = null) =>
+    // Meio de pagamento, parcelas e data: o que o lojista vê no painel.
+    const paymentDetails = () => ({
+      paymentMethodId: payment.payment_method_id ?? null,
+      paymentTypeId: payment.payment_type_id ?? null,
+      installments: payment.installments ?? null,
+      paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
+    });
+
+    const record = (
+      status: string,
+      reviewReason: string | null = null,
+      extra: Partial<typeof mpCheckoutTable.$inferInsert> = {},
+    ) =>
       tx
         .update(mpCheckoutTable)
         .set({
+          ...extra,
           status,
           paymentId: payment.id,
           lastPaymentStatus: payment.status,
@@ -145,6 +161,14 @@ export async function processPayment(storeId: string, paymentId: string) {
     // Já aprovado antes: notificações atrasadas/fora de ordem não mudam o
     // pedido, mas avisamos o lojista de disputa e de reembolso parcial.
     if (checkout.status === "approved") {
+      // Pedidos aprovados antes de guardarmos esses dados: completa quando
+      // o Mercado Pago voltar a notificar.
+      if (payment.status === "approved" && !checkout.paymentMethodId) {
+        await tx
+          .update(mpCheckoutTable)
+          .set(paymentDetails())
+          .where(eq(mpCheckoutTable.orderId, orderId));
+      }
       if (
         payment.status === "in_mediation" &&
         checkout.lastPaymentStatus !== "in_mediation"
@@ -192,7 +216,7 @@ export async function processPayment(storeId: string, paymentId: string) {
         paidNow = true;
         settled = true;
       }
-      await record("approved");
+      await record("approved", null, paymentDetails());
       return;
     }
 
