@@ -22,15 +22,9 @@ interface Variant {
 
 interface ProductActionsProps {
   variants: Variant[];
-  pixDiscountPercent?: number;
-  enableOnlinePayments?: boolean;
 }
 
-const ProductActions = ({
-  variants,
-  pixDiscountPercent = 0,
-  enableOnlinePayments = false,
-}: ProductActionsProps) => {
+const ProductActions = ({ variants }: ProductActionsProps) => {
   const params = useParams();
   const pathname = usePathname();
   const storeSlug = params.storeSlug as string;
@@ -56,13 +50,6 @@ const ProductActions = ({
   const compareAtPrice = currentVariant?.compareAtPriceInCents || 0;
   const hasComparePrice = compareAtPrice > originalPrice;
 
-  const pixPrice =
-    pixDiscountPercent > 0
-      ? originalPrice - (originalPrice * pixDiscountPercent) / 100
-      : originalPrice;
-
-  const showPix = enableOnlinePayments && pixDiscountPercent > 0;
-
   useEffect(() => {
     if (quantity > maxStock && maxStock > 0) {
       setQuantity(maxStock);
@@ -86,26 +73,6 @@ const ProductActions = ({
       {/* ✅ Bloco de Preços Organizado Verticalmente */}
       <div>
         {currentVariant ? (
-          showPix ? (
-            <div className="flex flex-col gap-1">
-              <span className="text-muted-foreground text-lg font-medium line-through">
-                {formatCentsToBRL(
-                  hasComparePrice ? compareAtPrice : originalPrice,
-                )}
-              </span>
-              <div className="flex items-center gap-3">
-                <p className="text-primary text-4xl font-extrabold">
-                  {formatCentsToBRL(pixPrice)}
-                </p>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-                  -{pixDiscountPercent}% PIX
-                </span>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                ou {formatCentsToBRL(originalPrice)} no cartão
-              </p>
-            </div>
-          ) : (
             <div className="flex flex-col gap-1">
               {hasComparePrice && (
                 <span className="text-muted-foreground text-lg font-medium line-through">
@@ -116,7 +83,6 @@ const ProductActions = ({
                 {formatCentsToBRL(originalPrice)}
               </p>
             </div>
-          )
         ) : (
           <p className="text-4xl font-bold">R$ --</p>
         )}

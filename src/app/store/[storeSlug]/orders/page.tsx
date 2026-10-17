@@ -49,12 +49,14 @@ const MyOrdersPage = async () => {
         <div className="mx-auto w-full max-w-7xl px-5 md:px-10">
           <h1 className="mb-6 text-2xl font-bold">Meus Pedidos</h1>{" "}
           <Orders
+            onlinePayments={store.enableOnlinePayments}
             orders={orders.map((order) => ({
               id: order.id,
               totalPriceInCents: order.totalPriceInCents,
               orderNumber: order.orderNumber,
               status: order.status,
               createdAt: order.createdAt,
+              paymentProvider: order.paymentProvider,
               items: order.items.map((item) => ({
                 id: item.id,
                 imageUrl: item.productVariant.imageUrl,

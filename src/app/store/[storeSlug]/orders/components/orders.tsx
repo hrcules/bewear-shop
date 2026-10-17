@@ -16,13 +16,19 @@ import { orderTable } from "@/db/schema";
 import { formatCentsToBRL } from "@/helpers/money";
 import { translateOrderStatus } from "@/helpers/orders-status";
 
+import { CancelOrderButton } from "./cancel-order-button";
+import { PendingPaymentButton } from "./pending-payment-button";
+
 interface OrdersProps {
+  /** A loja recebe pagamento online (só nela o cliente pode cancelar pendentes). */
+  onlinePayments: boolean;
   orders: Array<{
     id: string;
     totalPriceInCents: number;
     orderNumber: number | null;
     status: (typeof orderTable.$inferSelect)["status"];
     createdAt: Date;
+    paymentProvider: string;
     items: Array<{
       id: string;
       imageUrl: string;
@@ -34,7 +40,7 @@ interface OrdersProps {
   }>;
 }
 
-const Orders = ({ orders }: OrdersProps) => {
+const Orders = ({ orders, onlinePayments }: OrdersProps) => {
   function formatOrderNumber(orderNumber: number): string {
     return orderNumber.toString().padStart(4, "0");
   }
@@ -43,6 +49,7 @@ const Orders = ({ orders }: OrdersProps) => {
     switch (status.toLowerCase()) {
       case "pending":
       case "canceled":
+      case "cancelled":
         return "destructive";
       case "refunded":
         return "secondary";
@@ -77,10 +84,29 @@ const Orders = ({ orders }: OrdersProps) => {
                   <p className="text-accent-foreground text-sm">
                     Pedido realizado em:{" "}
                     <span className="font-medium">
-                      {order.createdAt.toLocaleDateString()} às{" "}
-                      {order.createdAt.toLocaleTimeString()}
+                      {order.createdAt.toLocaleDateString("pt-BR", {
+                        timeZone: "America/Sao_Paulo",
+                      })}{" "}
+                      às{" "}
+                      {order.createdAt.toLocaleTimeString("pt-BR", {
+                        timeZone: "America/Sao_Paulo",
+                      })}
                     </span>
                   </p>
+
+                  {order.status === "pending" && onlinePayments && (
+                    <div className="mt-4 flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm">
+                        Este pedido ainda aguarda o pagamento.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {order.paymentProvider === "mercadopago" && (
+                          <PendingPaymentButton orderId={order.id} />
+                        )}
+                        <CancelOrderButton orderId={order.id} />
+                      </div>
+                    </div>
+                  )}
 
                   <Separator className="my-4" />
 
