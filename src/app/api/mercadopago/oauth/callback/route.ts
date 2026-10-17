@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { mpConnectionTable, mpOAuthStateTable, storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { MpApiError, mpFetch, tokenSchema } from "@/lib/mercadopago/api";
+import { cancelAllPendingOrders } from "@/lib/mercadopago/cancel";
 import {
   mpEnabled,
   mpTestMode,
@@ -15,9 +16,14 @@ import { storePaymentLock } from "@/lib/mercadopago/connection";
 import { decrypt, encrypt, hash } from "@/lib/mercadopago/security";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function text(message: string, status: number) {
   return new NextResponse(message, { status });
+}
+
+function redirectTo(target: URL) {
+  return redirectTo(target);
 }
 
 export async function GET(request: NextRequest) {
@@ -86,6 +92,19 @@ export async function GET(request: NextRequest) {
 
     if (!token.scope.split(" ").includes("offline_access")) {
       throw new Error("Permissão de renovação ausente.");
+    }
+
+    // Trocar para OUTRA conta deixaria os pagamentos pendentes (da conta antiga)
+    // sem como serem conferidos ou cancelados. Cancela-os agora, com o token antigo.
+    const current = await db.query.mpConnectionTable.findFirst({
+      where: eq(mpConnectionTable.storeId, store.id),
+    });
+    if (current && current.sellerId !== token.user_id) {
+      const summary = await cancelAllPendingOrders(store.id);
+      if (summary.blocked > 0) {
+        target.searchParams.set("mp", "blocked");
+        return redirectTo(target);
+      }
     }
 
     await db.transaction(async (tx) => {

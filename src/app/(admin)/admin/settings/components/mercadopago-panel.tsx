@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import {
@@ -18,6 +18,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { MercadoPagoLogo } from "./mercadopago-logo";
 
@@ -39,17 +47,11 @@ export function MercadoPagoPanel({
   const [pending, start] = useTransition();
   const router = useRouter();
   const connected = status === "connected";
+  const [confirming, setConfirming] = useState<"switch" | "disconnect" | null>(
+    null,
+  );
 
   function connect() {
-    // Trocar de conta muda para onde vão os próximos pagamentos.
-    if (
-      connected &&
-      !window.confirm(
-        "Você vai autorizar outra conta do Mercado Pago. Os próximos pagamentos da loja cairão na conta escolhida. Continuar?",
-      )
-    ) {
-      return;
-    }
     start(async () => {
       try {
         window.location.assign((await connectMercadoPago()).url);
@@ -82,8 +84,12 @@ export function MercadoPagoPanel({
   function disconnect() {
     start(async () => {
       try {
-        await disconnectMercadoPago();
-        toast.success("Conta Mercado Pago desconectada.");
+        const { cancelled } = await disconnectMercadoPago();
+        toast.success(
+          cancelled > 0
+            ? `Conta desconectada. ${cancelled} pedido(s) pendente(s) cancelado(s).`
+            : "Conta Mercado Pago desconectada.",
+        );
         router.refresh();
       } catch (error) {
         toast.error(
@@ -118,6 +124,12 @@ export function MercadoPagoPanel({
             Conta conectada com sucesso.
           </p>
         )}
+        {result === "blocked" && (
+          <p role="alert" className="text-destructive text-sm">
+            A conta não foi trocada: alguns pedidos têm pagamento em análise ou
+            não puderam ser cancelados agora. Tente de novo em alguns minutos.
+          </p>
+        )}
         {result === "error" && (
           <p role="alert" className="text-destructive text-sm">
             A conexão não foi concluída. Tente autorizar novamente.
@@ -148,7 +160,7 @@ export function MercadoPagoPanel({
           <Button
             type="button"
             variant={connected ? "outline" : "default"}
-            onClick={connect}
+            onClick={connected ? () => setConfirming("switch") : connect}
             disabled={pending || !available}
           >
             {connected
@@ -171,7 +183,7 @@ export function MercadoPagoPanel({
             <Button
               type="button"
               variant="outline"
-              onClick={disconnect}
+              onClick={() => setConfirming("disconnect")}
               disabled={pending}
             >
               Desconectar
@@ -179,6 +191,52 @@ export function MercadoPagoPanel({
           )}
         </div>
       </CardContent>
+
+      <Dialog
+        open={confirming !== null}
+        onOpenChange={(value) => !pending && !value && setConfirming(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirming === "switch"
+                ? "Tem certeza que deseja trocar a conta?"
+                : "Tem certeza que deseja desconectar?"}
+            </DialogTitle>
+            <DialogDescription>
+              Os pedidos que ainda aguardam pagamento (inclusive Pix já gerados)
+              serão cancelados e o estoque devolvido. Pedidos já pagos não são
+              afetados.
+              {confirming === "switch"
+                ? " Os próximos pagamentos cairão na conta que você escolher."
+                : " Seus clientes não poderão pagar online até você conectar uma conta novamente."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(null)}
+              disabled={pending}
+            >
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={pending}
+              onClick={() => {
+                const action = confirming;
+                setConfirming(null);
+                if (action === "switch") connect();
+                else disconnect();
+              }}
+            >
+              {confirming === "switch" ? "Trocar conta" : "Desconectar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

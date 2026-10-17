@@ -11,6 +11,9 @@ import { mpEnabled } from "@/lib/mercadopago/config";
 import { MercadoPagoPanel } from "./components/mercadopago-panel";
 import { SettingsForm } from "./components/settings-form";
 
+// Desconectar o Mercado Pago cancela os pedidos pendentes (várias chamadas à API).
+export const maxDuration = 60;
+
 export default async function SettingsPage({
   searchParams,
 }: {

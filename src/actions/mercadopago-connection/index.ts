@@ -9,6 +9,7 @@ import { headers } from "next/headers";
 import { db } from "@/db";
 import { mpConnectionTable, mpOAuthStateTable, storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { cancelAllPendingOrders } from "@/lib/mercadopago/cancel";
 import { mpEnabled, oauthConfig } from "@/lib/mercadopago/config";
 import {
   connectionToken,
@@ -70,13 +71,22 @@ export const connectMercadoPago = tenantOwnerAction<void, { url: string }>(
 );
 
 /**
- * Desconecta a conta. Os tokens criptografados são mantidos (para conciliar
- * pedidos antigos), mas deixam de ser usados em novas vendas.
+ * Desconecta a conta. Antes, cancela os pedidos que ainda aguardam pagamento
+ * (inclusive os Pix já gerados) enquanto o token ainda funciona: depois de
+ * desconectar, nenhum pagamento pendente poderia ser conferido nem cancelado.
+ * Se algum pagamento estiver em análise, a desconexão é adiada.
  */
 export const disconnectMercadoPago = tenantOwnerAction<
   void,
-  { success: boolean }
+  { success: boolean; cancelled: number }
 >(async (_, ctx) => {
+  const summary = await cancelAllPendingOrders(ctx.storeId);
+  if (summary.blocked > 0) {
+    throw new Error(
+      "Alguns pedidos têm pagamento em análise ou não puderam ser cancelados agora. Tente desconectar de novo em alguns minutos.",
+    );
+  }
+
   await db.transaction(async (tx) => {
     await tx.execute(storePaymentLock(ctx.storeId));
 
@@ -91,7 +101,8 @@ export const disconnectMercadoPago = tenantOwnerAction<
   });
 
   revalidatePath("/admin/settings");
-  return { success: true };
+  revalidatePath("/admin/orders");
+  return { success: true, cancelled: summary.cancelled };
 });
 
 /**
