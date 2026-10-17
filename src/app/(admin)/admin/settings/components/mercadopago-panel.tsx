@@ -212,7 +212,7 @@ export function MercadoPagoPanel({
                 : " Seus clientes não poderão pagar online até você conectar uma conta novamente."}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-[22px]">
             <Button
               type="button"
               variant="outline"
