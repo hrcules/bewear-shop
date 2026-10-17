@@ -16,9 +16,12 @@ import { orderTable } from "@/db/schema";
 import { formatCentsToBRL } from "@/helpers/money";
 import { translateOrderStatus } from "@/helpers/orders-status";
 
+import { CancelOrderButton } from "./cancel-order-button";
 import { PendingPaymentButton } from "./pending-payment-button";
 
 interface OrdersProps {
+  /** A loja recebe pagamento online (só nela o cliente pode cancelar pendentes). */
+  onlinePayments: boolean;
   orders: Array<{
     id: string;
     totalPriceInCents: number;
@@ -37,7 +40,7 @@ interface OrdersProps {
   }>;
 }
 
-const Orders = ({ orders }: OrdersProps) => {
+const Orders = ({ orders, onlinePayments }: OrdersProps) => {
   function formatOrderNumber(orderNumber: number): string {
     return orderNumber.toString().padStart(4, "0");
   }
@@ -86,15 +89,19 @@ const Orders = ({ orders }: OrdersProps) => {
                     </span>
                   </p>
 
-                  {order.status === "pending" &&
-                    order.paymentProvider === "mercadopago" && (
-                      <div className="mt-4 flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm">
-                          Este pedido ainda aguarda o pagamento.
-                        </p>
-                        <PendingPaymentButton orderId={order.id} />
+                  {order.status === "pending" && onlinePayments && (
+                    <div className="mt-4 flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm">
+                        Este pedido ainda aguarda o pagamento.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {order.paymentProvider === "mercadopago" && (
+                          <PendingPaymentButton orderId={order.id} />
+                        )}
+                        <CancelOrderButton orderId={order.id} />
                       </div>
-                    )}
+                    </div>
+                  )}
 
                   <Separator className="my-4" />
 

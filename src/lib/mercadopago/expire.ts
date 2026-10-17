@@ -1,18 +1,12 @@
-import { and, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
-import {
-  mpCheckoutTable,
-  orderItemTable,
-  orderTable,
-  productVariantTable,
-  storeTable,
-} from "@/db/schema";
+import { mpCheckoutTable, orderTable, storeTable } from "@/db/schema";
 
 import { mpFetch } from "./api";
-import { connectionToken, storePaymentLock } from "./connection";
-import { cancelPixReminder } from "./notify";
+import { cancelPendingOrder } from "./cancel";
+import { connectionToken } from "./connection";
 import { processPayment } from "./payments";
 
 // Folga depois que a preferência expira (Pix gerado no fim do prazo ainda vale).
@@ -27,47 +21,8 @@ const paymentSchema = z.object({
 });
 
 /** Cancela o pedido (se ainda pendente) e devolve o estoque. */
-async function cancelPending(orderId: string, storeId: string) {
-  const cancelled = await cancelPendingInTransaction(orderId, storeId);
-  if (cancelled) await cancelPixReminder(orderId);
-  return cancelled;
-}
-
-async function cancelPendingInTransaction(orderId: string, storeId: string) {
-  return db.transaction(async (tx) => {
-    await tx.execute(storePaymentLock(storeId));
-
-    const [order] = await tx
-      .select()
-      .from(orderTable)
-      .where(eq(orderTable.id, orderId))
-      .for("update");
-    if (!order || order.status !== "pending") return false;
-
-    await tx
-      .update(orderTable)
-      .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(orderTable.id, orderId));
-
-    const items = await tx
-      .select()
-      .from(orderItemTable)
-      .where(eq(orderItemTable.orderId, orderId));
-    for (const item of items) {
-      await tx
-        .update(productVariantTable)
-        .set({ stock: sql`${productVariantTable.stock} + ${item.quantity}` })
-        .where(eq(productVariantTable.id, item.productVariantId));
-    }
-
-    await tx
-      .update(mpCheckoutTable)
-      .set({ status: "expired", updatedAt: new Date() })
-      .where(eq(mpCheckoutTable.orderId, orderId));
-
-    return true;
-  });
-}
+const cancelPending = (orderId: string, storeId: string) =>
+  cancelPendingOrder(orderId, storeId, "expired");
 
 export type ExpireSummary = {
   expired: number;
