@@ -182,6 +182,13 @@ export const auth = betterAuth({
     "https://www.bewearshop.com.br",
     "https://*.bewearshop.com.br",
 
+    /*
+     * Mesmo workaround do staging: no Better Auth 1.2.12 o wildcard
+     * não aceita o callbackURL (origem pura) de uma loja. Cada loja
+     * precisa estar listada aqui até a correção definitiva.
+     */
+    "https://bewear.bewearshop.com.br",
+
     // --------------------------
     // STAGING
     // --------------------------
