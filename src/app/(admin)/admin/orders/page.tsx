@@ -241,7 +241,9 @@ function OrdersList({
               </div>
             </div>
 
-            {payments[order.id] && <PaymentDetails payment={payments[order.id]} />}
+            {payments[order.id] && (
+              <PaymentDetails payment={payments[order.id]} />
+            )}
           </div>
         );
       })}
