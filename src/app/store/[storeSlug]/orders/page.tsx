@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -6,7 +5,7 @@ import Header from "@/components/common/header/index";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
 
-import Orders from "./components/orders";
+import OrdersWithFilter from "./components/orders-with-filter";
 import { getTenantStore } from "@/lib/tentat";
 
 const MyOrdersPage = async () => {
@@ -47,8 +46,8 @@ const MyOrdersPage = async () => {
 
       <main className="flex-1 space-y-8 pt-6 pb-12">
         <div className="mx-auto w-full max-w-7xl px-5 md:px-10">
-          <h1 className="mb-6 text-2xl font-bold">Meus Pedidos</h1>{" "}
-          <Orders
+          <h1 className="mb-6 text-2xl font-bold">Meus Pedidos</h1>
+          <OrdersWithFilter
             onlinePayments={store.enableOnlinePayments}
             orders={orders.map((order) => ({
               id: order.id,
