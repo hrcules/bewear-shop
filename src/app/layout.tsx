@@ -5,7 +5,6 @@ import { Poppins } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
 import ReactQueryProvider from "@/providers/react-query";
-import Footer from "@/components/common/footer";
 
 import { Analytics } from "@vercel/analytics/next";
 
@@ -35,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
       <body
         className={`${poppins.variable} flex min-h-screen flex-col antialiased`}
         suppressHydrationWarning

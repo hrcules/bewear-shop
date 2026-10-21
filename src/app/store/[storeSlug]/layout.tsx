@@ -36,7 +36,7 @@ export default async function RootLayout({
   const store = await getTenantStore();
 
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body
         className={`${poppins.variable} flex min-h-screen flex-col antialiased`}
         style={
