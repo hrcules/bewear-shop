@@ -45,14 +45,6 @@ export const updateStoreSettingsAction = tenantOwnerAction<
   // ✅ NOVO: Extraindo o booleano do FormData
   const enableOnlinePayments = formData.get("enableOnlinePayments") === "true";
 
-  const stripePublicKey = formData.get("stripePublicKey") as string;
-  const stripeSecretKey = formData.get("stripeSecretKey") as string;
-  const stripeWebhookSecret = formData.get("stripeWebhookSecret") as string;
-  const mpAccessToken = formData.get("mpAccessToken") as string;
-  const pixDiscountPercentStr = formData.get("pixDiscountPercent") as
-    | string
-    | null;
-
   const fixedShippingFeeInCents = parseInt(
     (formData.get("fixedShippingFeeInCents") as string) || "0",
   );
@@ -121,13 +113,6 @@ export const updateStoreSettingsAction = tenantOwnerAction<
       banner2MobileUrl,
       fixedShippingFeeInCents,
       freeShippingThresholdInCents,
-      stripePublicKey,
-      stripeSecretKey,
-      stripeWebhookSecret,
-      mpAccessToken,
-      pixDiscountPercent: pixDiscountPercentStr
-        ? parseInt(pixDiscountPercentStr)
-        : 0,
       updatedAt: new Date(),
     })
     .where(eq(storeTable.id, storeId));

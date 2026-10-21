@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
 import { orderTable, orderItemTable, productVariantTable } from "@/db/schema";
+import { cancelPixReminder } from "@/lib/mercadopago/notify";
 import { tenantOwnerAction } from "@/lib/safe-action";
 
 export const updateOrderStatusAction = tenantOwnerAction<
@@ -27,7 +28,17 @@ export const updateOrderStatusAction = tenantOwnerAction<
     );
   }
 
-  if (newStatus === "cancelled" && order.status !== "cancelled") {
+  if (order.status === "refunded" && newStatus !== "refunded") {
+    throw new Error(
+      "Não é possível alterar o status de um pedido já reembolsado.",
+    );
+  }
+
+  if (
+    newStatus === "cancelled" &&
+    order.status !== "cancelled" &&
+    order.status !== "refunded"
+  ) {
     const orderItems = await db.query.orderItemTable.findMany({
       where: eq(orderItemTable.orderId, orderId),
     });
@@ -46,6 +57,10 @@ export const updateOrderStatusAction = tenantOwnerAction<
     .update(orderTable)
     .set({ status: newStatus })
     .where(eq(orderTable.id, orderId));
+
+  if (order.status === "pending" && newStatus !== "pending") {
+    await cancelPixReminder(orderId);
+  }
 
   revalidatePath("/admin/orders");
   revalidatePath("/orders");

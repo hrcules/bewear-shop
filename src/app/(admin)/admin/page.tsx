@@ -102,7 +102,8 @@ export default async function AdminDashboardPage({
   });
 
   const successfulOrders = orders.filter(
-    (o) => o.status !== "pending" && o.status !== "canceled",
+    (o) =>
+      !["pending", "canceled", "cancelled", "refunded"].includes(o.status),
   );
   const totalRevenueInCents = successfulOrders.reduce(
     (acc, order) => acc + order.totalPriceInCents,

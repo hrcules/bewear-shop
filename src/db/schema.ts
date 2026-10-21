@@ -2,6 +2,8 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   integer,
+  jsonb,
+  uniqueIndex,
   pgTable,
   text,
   timestamp,
@@ -83,18 +85,13 @@ export const storeTable = pgTable("store", {
     .notNull(),
   freeShippingThresholdInCents: integer("free_shipping_threshold_in_cents"),
 
-  pixDiscountPercent: integer("pix_discount_percent").default(0).notNull(),
-
   enableOnlinePayments: boolean("enable_online_payments")
     .default(true)
     .notNull(),
 
+  checkoutProvider: text("checkout_provider").default("legacy").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
 
-  stripePublicKey: text("stripe_public_key"),
-  stripeSecretKey: text("stripe_secret_key"),
-  stripeWebhookSecret: text("stripe_webhook_secret"),
-  mpAccessToken: text("mp_access_token"),
   termsAcceptedAt: timestamp("terms_accepted_at"),
 
   ownerId: text("owner_id")
@@ -275,11 +272,7 @@ export const orderTable = pgTable("order", {
   storeId: uuid("store_id")
     .notNull()
     .references(() => storeTable.id, { onDelete: "cascade" }),
-  stripeCheckoutSessionId: text("stripe_checkout_session_id"),
-
-  pixQrCode: text("pix_qr_code"),
-  pixQrCodeBase64: text("pix_qr_code_base64"),
-  pixPaymentId: text("pix_payment_id"),
+  paymentProvider: text("payment_provider").default("legacy").notNull(),
   status: text("status").notNull(),
   orderNumber: integer("order_number").notNull().unique(),
   totalPriceInCents: integer("total_price_in_cents").notNull(),
@@ -347,3 +340,96 @@ export const announcementTable = pgTable("announcement", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// OAuth secrets are intentionally isolated from the public store record.
+export const mpConnectionTable = pgTable("mp_connection", {
+  storeId: uuid("store_id")
+    .primaryKey()
+    .references(() => storeTable.id, { onDelete: "cascade" }),
+  sellerId: text("seller_id").notNull(),
+  accessTokenEncrypted: text("access_token_encrypted").notNull(),
+  refreshTokenEncrypted: text("refresh_token_encrypted").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  status: text("status").notNull().default("connected"),
+  liveMode: boolean("live_mode").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const mpOAuthStateTable = pgTable("mp_oauth_state", {
+  stateHash: text("state_hash").primaryKey(),
+  storeId: uuid("store_id")
+    .notNull()
+    .references(() => storeTable.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  sessionHash: text("session_hash").notNull(),
+  verifierEncrypted: text("verifier_encrypted").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+export type MpCheckoutItem = {
+  id: string;
+  title: string;
+  quantity: number;
+  unit_price: number;
+  currency_id: "BRL";
+};
+export const mpCheckoutTable = pgTable(
+  "mp_checkout",
+  {
+    orderId: uuid("order_id")
+      .primaryKey()
+      .references(() => orderTable.id),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => storeTable.id),
+    userId: text("user_id").notNull(),
+    requestKey: uuid("request_key").notNull(),
+    sourceCartId: uuid("source_cart_id").unique(),
+    sellerId: text("seller_id").notNull(),
+    liveMode: boolean("live_mode").notNull(),
+    preferenceId: text("preference_id").unique(),
+    mercadoPagoOrderId: text("mercado_pago_order_id").unique(),
+    checkoutUrl: text("checkout_url"),
+    status: text("status").notNull().default("new"),
+    paymentId: text("payment_id").unique(),
+    lastPaymentStatus: text("last_payment_status"),
+    paymentMethodId: text("payment_method_id"),
+    paymentTypeId: text("payment_type_id"),
+    installments: integer("installments"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    reviewReason: text("review_reason"),
+    items: jsonb("items").$type<MpCheckoutItem[]>().notNull(),
+    shippingInCents: integer("shipping_in_cents").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("mp_checkout_request_unique").on(
+      table.storeId,
+      table.userId,
+      table.requestKey,
+    ),
+  ],
+);
+
+export const mpEmailTable = pgTable(
+  "mp_email",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orderTable.id),
+    recipient: text("recipient").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex("mp_email_recipient_unique").on(table.orderId, table.recipient),
+  ],
+);

@@ -47,7 +47,7 @@ export function OrderStatusSelector({
       <Select
         defaultValue={currentStatus}
         onValueChange={handleStatusChange}
-        disabled={isPending}
+        disabled={isPending || currentStatus === "refunded"}
       >
         <SelectTrigger className="h-8 w-[140px] text-xs font-medium">
           <SelectValue placeholder="Status" />
@@ -57,7 +57,10 @@ export function OrderStatusSelector({
           <SelectItem value="paid">Pago (A Preparar)</SelectItem>
           <SelectItem value="shipped">Enviado</SelectItem>
           <SelectItem value="delivered">Entregue</SelectItem>
-          <SelectItem value="cancelled">Cancelado</SelectItem>{" "}
+          <SelectItem value="cancelled">Cancelado</SelectItem>
+          <SelectItem value="refunded" disabled>
+            Reembolsado
+          </SelectItem>
         </SelectContent>
       </Select>
     </div>
