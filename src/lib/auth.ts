@@ -180,13 +180,17 @@ export const auth = betterAuth({
 
     "https://bewearshop.com.br",
     "https://www.bewearshop.com.br",
-    "https://*.bewearshop.com.br",
 
     /*
-     * Mesmo workaround do staging: no Better Auth 1.2.12 o wildcard
-     * não aceita o callbackURL (origem pura) de uma loja. Cada loja
-     * precisa estar listada aqui até a correção definitiva.
+     * Wildcards do Better Auth 1.2.x são comparados com o HOST da URL
+     * (sem protocolo). Um padrão como "https://*.bewearshop.com.br"
+     * nunca casa com o callbackURL de uma loja; por isso o padrão
+     * correto é só o host. Isso libera qualquer slug de loja.
      */
+    "*.bewearshop.com.br",
+    "https://*.bewearshop.com.br",
+
+    // Garantia extra para a loja principal.
     "https://bewear.bewearshop.com.br",
 
     // --------------------------
@@ -194,13 +198,8 @@ export const auth = betterAuth({
     // --------------------------
 
     "https://staging.bewearshop.com.br",
+    "*.staging.bewearshop.com.br",
     "https://*.staging.bewearshop.com.br",
-
-    /*
-     * Workaround para Better Auth 1.2.12,
-     * já que o wildcard não aceitou corretamente
-     * o callbackURL dessa loja no nosso teste.
-     */
     "https://bewear.staging.bewearshop.com.br",
 
     // --------------------------
@@ -208,6 +207,7 @@ export const auth = betterAuth({
     // --------------------------
 
     "http://lvh.me:3000",
+    "*.lvh.me:3000",
     "http://*.lvh.me:3000",
   ],
 
