@@ -2,11 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatCentsToBRL } from "@/helpers/money";
 
+import CartSummaryItem from "./cart-summary-item";
+
 interface CartSummaryProps {
   subtotalInCents: number;
   freteInCents: number;
   totalInCents: number;
-  pixDiscountPercent?: number; // ✅ NOVO: Recebendo a porcentagem
   products: Array<{
     id: string;
     name: string;
@@ -21,22 +22,30 @@ const CartSummary = ({
   subtotalInCents,
   freteInCents,
   totalInCents,
-  pixDiscountPercent = 0,
   products,
 }: CartSummaryProps) => {
-  const pixDiscountAmount =
-    pixDiscountPercent > 0
-      ? Math.round((subtotalInCents * pixDiscountPercent) / 100)
-      : 0;
-  const pixTotalInCents = subtotalInCents - pixDiscountAmount + freteInCents;
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Resumo do pedido</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Linhas de valores simples e limpas */}
+        <div className="space-y-4">
+          {products.map((product) => (
+            <CartSummaryItem
+              key={product.id}
+              id={product.id}
+              name={product.name}
+              variantName={product.variantName}
+              quantity={product.quantity}
+              priceInCents={product.priceInCents}
+              imageUrl={product.imageUrl}
+            />
+          ))}
+        </div>
+
+        <Separator />
+
         <div className="space-y-2 text-sm">
           <div className="text-muted-foreground flex justify-between">
             <p>Subtotal</p>
@@ -52,28 +61,10 @@ const CartSummary = ({
 
         <Separator />
 
-        {/* Aqui está o pulo do gato: Apenas duas linhas claras */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Total no Cartão</p>
-            <p className="text-muted-foreground text-sm">
-              {formatCentsToBRL(totalInCents)}
-            </p>
-          </div>
-
-          {pixDiscountPercent > 0 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-emerald-600">
-                Total no PIX ({pixDiscountPercent}% desc.)
-              </p>
-              <p className="text-lg font-bold text-emerald-600">
-                {formatCentsToBRL(pixTotalInCents)}
-              </p>
-            </div>
-          )}
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">Total</p>
+          <p className="text-lg font-bold">{formatCentsToBRL(totalInCents)}</p>
         </div>
-
-        {/* ... (resto dos itens) */}
       </CardContent>
     </Card>
   );
