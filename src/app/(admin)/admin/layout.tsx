@@ -45,13 +45,15 @@ export default async function AdminLayout({
   }
 
   // ✅ A SERVER ACTION: Função que roda apenas no backend para salvar o aceite
-  async function handleAcceptTerms(storeId: string) {
+  // 🛡️ Usa o id da loja já validada acima (fechado no servidor), não o que vem do cliente
+  const ownerStoreId = store.id;
+  async function handleAcceptTerms() {
     "use server"; // Isso transforma a função em uma Server Action
 
     await db
       .update(storeTable)
       .set({ termsAcceptedAt: new Date() })
-      .where(eq(storeTable.id, storeId));
+      .where(eq(storeTable.id, ownerStoreId));
   }
 
   // ✅ A TRAVA: Verifica se a loja ainda não aceitou os termos
