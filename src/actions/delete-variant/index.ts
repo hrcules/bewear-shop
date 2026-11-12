@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
@@ -14,7 +14,10 @@ export const deleteVariantAction = tenantOwnerAction<
   const { storeId } = ctx;
 
   const parentProduct = await db.query.productTable.findFirst({
-    where: eq(productTable.id, productId),
+    where: and(
+      eq(productTable.id, productId),
+      eq(productTable.storeId, storeId),
+    ),
   });
 
   if (!parentProduct || parentProduct.storeId !== storeId) {
@@ -22,9 +25,19 @@ export const deleteVariantAction = tenantOwnerAction<
   }
 
   try {
-    await db
+    const deleted = await db
       .delete(productVariantTable)
-      .where(eq(productVariantTable.id, variantId));
+      .where(
+        and(
+          eq(productVariantTable.id, variantId),
+          eq(productVariantTable.productId, parentProduct.id),
+        ),
+      )
+      .returning({ id: productVariantTable.id });
+
+    if (deleted.length === 0) {
+      return { success: false, error: "Variação não encontrada." };
+    }
 
     revalidatePath(`/admin/products/${productId}`);
 

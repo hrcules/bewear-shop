@@ -2,9 +2,11 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 import { db } from "@/db";
-import { announcementTable } from "@/db/schema";
+import { announcementTable, user } from "@/db/schema";
+import { auth } from "@/lib/auth";
 
 import {
   CreateAnnouncementInput,
@@ -13,10 +15,29 @@ import {
   updateAnnouncementSchema,
 } from "./schema";
 
+// 🛡️ Avisos são globais: só o super admin pode criar, editar ou apagar
+async function isSuperAdmin() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) return false;
+
+  const dbUser = await db.query.user.findFirst({
+    where: eq(user.id, session.user.id),
+  });
+
+  return dbUser?.role === "superadmin";
+}
+
+const ACCESS_DENIED = {
+  success: false,
+  error: "Acesso negado. Apenas o Super Admin possui permissão.",
+} as const;
+
 // ==========================================
 // 1. CRIAR AVISO
 // ==========================================
 export async function createAnnouncement(data: CreateAnnouncementInput) {
+  if (!(await isSuperAdmin())) return ACCESS_DENIED;
+
   const parsed = createAnnouncementSchema.safeParse(data);
 
   if (!parsed.success) {
@@ -47,6 +68,8 @@ export async function createAnnouncement(data: CreateAnnouncementInput) {
 // 2. ATUALIZAR AVISO
 // ==========================================
 export async function updateAnnouncement(data: UpdateAnnouncementInput) {
+  if (!(await isSuperAdmin())) return ACCESS_DENIED;
+
   const parsed = updateAnnouncementSchema.safeParse(data);
 
   if (!parsed.success) {
@@ -81,6 +104,8 @@ export async function updateAnnouncement(data: UpdateAnnouncementInput) {
 // 3. DELETAR AVISO
 // ==========================================
 export async function deleteAnnouncement(id: string) {
+  if (!(await isSuperAdmin())) return ACCESS_DENIED;
+
   try {
     if (!id) return { success: false, error: "ID é obrigatório." };
 
@@ -101,6 +126,8 @@ export async function toggleAnnouncementStatus(
   id: string,
   currentStatus: boolean,
 ) {
+  if (!(await isSuperAdmin())) return ACCESS_DENIED;
+
   try {
     if (!id) return { success: false, error: "ID é obrigatório." };
 

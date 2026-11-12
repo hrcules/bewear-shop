@@ -1,11 +1,12 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp"; // ✅ A Mágica importada aqui no topo!
 
 import { db } from "@/db";
-import { productTable, productVariantTable } from "@/db/schema";
+import { categoryTable, productTable, productVariantTable } from "@/db/schema";
 import { r2 } from "@/lib/r2";
 import { tenantOwnerAction } from "@/lib/safe-action";
 
@@ -27,6 +28,18 @@ export const createProductAction = tenantOwnerAction<
 
   if (!name || !priceInput || !categoryId || !color || !size) {
     throw new Error("Preencha todos os campos obrigatórios");
+  }
+
+  // 🛡️ A categoria precisa ser desta loja
+  const category = await db.query.categoryTable.findFirst({
+    where: and(
+      eq(categoryTable.id, categoryId),
+      eq(categoryTable.storeId, storeId),
+    ),
+  });
+
+  if (!category) {
+    throw new Error("Categoria inválida ou sem permissão.");
   }
 
   const priceInCents = Math.round(
