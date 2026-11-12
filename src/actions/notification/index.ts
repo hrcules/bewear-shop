@@ -43,7 +43,12 @@ export const markNotificationAsRead = async (notificationId: string) => {
   await db
     .update(notificationTable)
     .set({ isRead: true })
-    .where(eq(notificationTable.id, notificationId));
+    .where(
+      and(
+        eq(notificationTable.id, notificationId),
+        eq(notificationTable.userId, session.user.id),
+      ),
+    );
 
   return { success: true };
 };
