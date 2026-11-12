@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 
@@ -39,6 +39,19 @@ export const updateVariantAction = tenantOwnerAction<
 
   if (!variantId || !productId || !color || !size || !priceInput) {
     throw new Error("Preencha todos os campos obrigatórios.");
+  }
+
+  // 🛡️ A variante precisa existir, ser deste produto e o produto ser desta loja
+  const existingVariant = await db.query.productVariantTable.findFirst({
+    where: and(
+      eq(productVariantTable.id, variantId),
+      eq(productVariantTable.productId, productId),
+    ),
+    with: { product: true },
+  });
+
+  if (!existingVariant || existingVariant.product.storeId !== storeId) {
+    throw new Error("Variação inválida ou sem permissão.");
   }
 
   const priceInCents = Math.round(
@@ -83,7 +96,12 @@ export const updateVariantAction = tenantOwnerAction<
   await db
     .update(productVariantTable)
     .set(updateData)
-    .where(eq(productVariantTable.id, variantId));
+    .where(
+      and(
+        eq(productVariantTable.id, variantId),
+        eq(productVariantTable.productId, productId),
+      ),
+    );
 
   revalidatePath(`/admin/products/${productId}`);
   return { success: true };
