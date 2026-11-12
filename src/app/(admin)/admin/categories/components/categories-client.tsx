@@ -49,13 +49,19 @@ export const CategoriesClient = ({
     }
 
     if (
-      window.confirm(
-        `Tem certeza que deseja excluir a categoria "${name}"? Os produtos vinculados a ela poderão ficar inacessíveis.`,
-      )
+      window.confirm(`Tem certeza que deseja excluir a categoria "${name}"?`)
     ) {
       startTransition(async () => {
         try {
-          await deleteCategory(id);
+          const result = await deleteCategory(id);
+
+          if (!result.success) {
+            toast.error(
+              result.error ?? "Não foi possível excluir a categoria.",
+            );
+            return;
+          }
+
           toast.success("Categoria excluída com sucesso!");
         } catch {
           toast.error("Ocorreu um erro ao excluir.");

@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { Loader2, Plus, UploadCloud, X, Copy } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createVariantAction } from "@/actions/create-variant";
 import { ColorCombobox } from "@/components/ui/color-combobox";
+
+// A Vercel recusa requisições acima de ~4,5 MB; o servidor valida o mesmo limite
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
+function formatList(items: string[]) {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+}
 
 // ✅ 1. Definimos o tipo dos dados que podem ser herdados
 export interface VariantInitialData {
@@ -44,15 +53,21 @@ export function CreateVariantDialog({
   const [isPending, startTransition] = useTransition();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // Foto herdada no modo "Duplicar" (some quando o lojista clica no X)
+  const [inheritedImageUrl, setInheritedImageUrl] = useState<string | null>(
+    null,
+  );
 
   // ✅ 4. Efeito para preencher a imagem antiga quando o modal abre no modo "Duplicar"
   useEffect(() => {
     if (isOpen && initialData?.imageUrl) {
       setImagePreview(initialData.imageUrl);
+      setInheritedImageUrl(initialData.imageUrl);
       setSelectedFile(null); // Zera o arquivo porque vamos usar a URL
     } else if (!isOpen) {
       // Limpa os estados quando fecha
       setImagePreview(null);
+      setInheritedImageUrl(null);
       setSelectedFile(null);
     }
   }, [isOpen, initialData]);
@@ -60,6 +75,14 @@ export function CreateVariantDialog({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("O arquivo escolhido não é uma imagem.");
+        return;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        toast.error("A imagem passa de 4 MB. Escolha uma foto menor.");
+        return;
+      }
       setSelectedFile(file);
       setImagePreview(URL.createObjectURL(file));
     }
@@ -68,23 +91,32 @@ export function CreateVariantDialog({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // ✅ 5. Validação Flexível: Precisa ter um arquivo NOVO ou uma URL HERDADA
-    if (!selectedFile && !initialData?.imageUrl) {
-      alert("Por favor, selecione uma imagem para esta variação.");
-      return;
-    }
-
     const formData = new FormData(e.currentTarget);
     formData.set("productId", productId);
+
+    // ✅ 5. Confere os campos antes de enviar e diz exatamente o que falta
+    const missing: string[] = [];
+    if (!String(formData.get("color") ?? "").trim()) missing.push("Cor");
+    if (!String(formData.get("size") ?? "").trim()) missing.push("Tamanho");
+    if (!String(formData.get("price") ?? "").trim()) missing.push("Preço");
+    if (!String(formData.get("stock") ?? "").trim()) missing.push("Estoque");
+    if (!selectedFile && !inheritedImageUrl) missing.push("Imagem");
+
+    if (missing.length > 0) {
+      toast.error(
+        `Não foi possível adicionar a variação: falta preencher ${formatList(missing)}.`,
+      );
+      return;
+    }
 
     // ✅ 6. A lógica de envio da imagem:
     if (selectedFile) {
       // Se ele escolheu uma foto nova, envia o arquivo (como antes)
       formData.set("image", selectedFile);
-    } else if (initialData?.imageUrl) {
+    } else if (inheritedImageUrl) {
       // Se ele NÃO escolheu foto nova, mas tem foto antiga, manda a URL escondida!
       // IMPORTANTE: Seu backend precisará ler essa string agora!
-      formData.set("previousImageUrl", initialData.imageUrl);
+      formData.set("previousImageUrl", inheritedImageUrl);
 
       // Enviamos um Blob vazio no campo "image" só para o FormData não quebrar caso o backend exija o campo
       formData.set("image", new Blob([], { type: "application/octet-stream" }));
@@ -92,11 +124,20 @@ export function CreateVariantDialog({
 
     startTransition(async () => {
       try {
-        await createVariantAction(formData);
+        const result = await createVariantAction(formData);
+
+        if (!result.success) {
+          toast.error(result.error ?? "Não foi possível adicionar a variação.");
+          return;
+        }
+
+        toast.success("Variação adicionada com sucesso!");
         setIsOpen(false);
       } catch (error) {
         console.error(error);
-        alert("Erro ao criar a variação.");
+        toast.error(
+          "Não foi possível adicionar a variação. Verifique sua conexão e tente novamente.",
+        );
       }
     });
   };
@@ -132,7 +173,7 @@ export function CreateVariantDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="price">Preço Específico (R$)</Label>
@@ -165,18 +206,11 @@ export function CreateVariantDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="color">Cor (Ex: Verde, Bege)</Label>
-              {/* ✅ Se a ColorCombobox suportar defaultValue, passe o initialData?.color para ela.
-                  Se não suportar, ela pode precisar de um ajuste interno para herdar. */}
+              {/* O combobox já envia o campo "color" e herda a cor no modo "Duplicar" */}
               <ColorCombobox
                 existingColors={existingColors}
                 disabled={isPending}
-                // Exemplo: value={initialData?.color} (Depende de como você montou esse componente)
-              />
-              {/* Hack rápido para garantir que a cor vá pro FormData se o Combobox for complexo */}
-              <input
-                type="hidden"
-                name="color"
-                value={initialData?.color || ""}
+                defaultValue={initialData?.color}
               />
             </div>
             <div className="space-y-2">
@@ -211,7 +245,7 @@ export function CreateVariantDialog({
                     onClick={() => {
                       setImagePreview(null);
                       setSelectedFile(null);
-                      // Se tinha foto herdada, ela é removida visualmente
+                      setInheritedImageUrl(null); // Remove também a foto herdada
                     }}
                     disabled={isPending}
                   >
