@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState, ReactNode } from "react";
 import {
-  Zap,
   ShieldCheck,
   Globe,
   MessageCircle,
@@ -14,6 +13,9 @@ import {
   ChevronDown,
   Smartphone,
   LayoutDashboard, // <-- Ícone novo para a seção do admin
+  Sparkles,
+  Gift,
+  Shirt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -60,9 +62,58 @@ function FadeIn({
   );
 }
 
+// --- OFERTA ---
+// Desligue quando a campanha de fim de ano acabar.
+const CAMPANHA_ATIVA = true;
+
+const WHATSAPP_NUMERO = "5583999170411";
+
+function whatsapp(mensagem: string) {
+  return `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensagem)}`;
+}
+
+const IMPLANTACAO = {
+  preco: "497",
+  itens: [
+    "Loja montada com a identidade da sua marca",
+    "Cadastro de até 50 produtos com cores, tamanhos e estoque",
+    "Pix e cartão configurados no seu Mercado Pago",
+    "Link pronto para a bio do Instagram e botão de WhatsApp",
+    "Treinamento de 30 minutos para você usar o painel",
+  ],
+};
+
+const PLANOS = [
+  {
+    nome: "Essencial",
+    preco: "79",
+    descricao: "Para quem quer cuidar da própria loja no dia a dia.",
+    itens: [
+      "Loja completa no ar",
+      "Painel de produtos, estoque e pedidos",
+      "Pix e cartão sem comissão da Bewear",
+      "Suporte pelo WhatsApp",
+    ],
+    destaque: false,
+  },
+  {
+    nome: "Completo",
+    preco: "149",
+    descricao: "Para quem quer focar só em vender. A gente cuida do resto.",
+    itens: [
+      "Tudo do Essencial",
+      "Cadastramos os produtos de cada coleção nova",
+      "Banners trocados nas datas comemorativas",
+      "Suporte prioritário",
+    ],
+    destaque: true,
+  },
+];
+
 export default function LandingPage() {
-  const whatsappLink =
-    "https://wa.me/5583999170411?text=Ol%C3%A1!%20Gostaria%20de%20saber%20mais%20sobre%20como%20criar%20minha%20loja%20na%20Bewear.";
+  const whatsappLink = whatsapp(
+    "Olá! Gostaria de saber mais sobre como criar minha loja na Bewear.",
+  );
 
   return (
     <div className="flex min-h-screen flex-col overflow-hidden scroll-smooth bg-white text-slate-900">
@@ -97,6 +148,9 @@ export default function LandingPage() {
           >
             Funcionalidades
           </a>
+          <a href="#planos" className="hover:text-primary transition-colors">
+            Planos
+          </a>
           <a href="#faq" className="hover:text-primary transition-colors">
             FAQ
           </a>
@@ -113,6 +167,21 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-1">
+        {/* FAIXA DA CAMPANHA */}
+        {CAMPANHA_ATIVA && (
+          <a
+            href="#planos"
+            className="flex items-center justify-center gap-2 bg-slate-900 px-6 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-slate-800"
+          >
+            <Gift className="h-4 w-4 flex-shrink-0 text-amber-400" />
+            <span>
+              Sua loja pronta para vender na <strong>Black Friday</strong> e no{" "}
+              <strong>Natal</strong>. Agenda de implantação limitada.
+            </span>
+            <ArrowRight className="hidden h-4 w-4 sm:block" />
+          </a>
+        )}
+
         {/* HERO SECTION - Limpo, apenas texto e botão */}
         <section className="relative mx-auto max-w-6xl px-6 py-20 text-center md:py-32">
           {/* Background Blur */}
@@ -120,21 +189,22 @@ export default function LandingPage() {
 
           <FadeIn className="space-y-8">
             <div className="mx-auto flex w-fit items-center gap-2 rounded-full border bg-slate-50 px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm">
-              <Zap className="h-4 w-4 fill-amber-500 text-amber-500" />
-              <span>A plataforma feita para quem quer crescer</span>
+              <Shirt className="text-primary h-4 w-4" />
+              <span>Feito para boutiques e lojas de moda</span>
             </div>
 
             <h1 className="text-5xl font-extrabold tracking-tight text-balance md:text-7xl">
-              Venda online com sua própria marca.{" "}
+              Sua boutique vendendo online.{" "}
               <br className="hidden md:block" />
               <span className="from-primary bg-gradient-to-r to-purple-500 bg-clip-text text-transparent">
-                Sem complicação.
+                A gente monta tudo.
               </span>
             </h1>
 
             <p className="text-muted-foreground mx-auto max-w-2xl text-lg text-balance md:text-2xl">
-              Esqueça as taxas absurdas dos marketplaces. Tenha sua loja virtual
-              premium, com gestão de estoque e pagamentos automatizados.
+              Sua cliente escolhe a cor e o tamanho, paga no Pix ou cartão e o
+              pedido chega pronto. Chega de responder &ldquo;tem no M?&rdquo; o
+              dia inteiro no direct.
             </p>
 
             <div className="flex flex-col items-center justify-center gap-4 pt-4 sm:flex-row">
@@ -149,9 +219,17 @@ export default function LandingPage() {
                   rel="noopener noreferrer"
                 >
                   <MessageCircle className="h-5 w-5" />
-                  Criar minha loja agora
+                  Quero minha loja pronta
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </a>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full px-8 py-6 text-lg font-semibold"
+                asChild
+              >
+                <a href="#planos">Ver planos e preços</a>
               </Button>
             </div>
           </FadeIn>
@@ -416,12 +494,12 @@ export default function LandingPage() {
                 {
                   step: "2",
                   title: "Setup Mágico",
-                  desc: "Nós configuramos seu subdomínio, painel de gestão e meios de pagamento.",
+                  desc: "Montamos sua loja, cadastramos seus produtos e configuramos o Pix e o cartão.",
                 },
                 {
                   step: "3",
                   title: "Pronto para Vender",
-                  desc: "Você recebe seus acessos, cadastra os produtos e já pode divulgar o link!",
+                  desc: "Você recebe a loja no ar, aprende a usar em 30 minutos e já pode divulgar o link!",
                 },
               ].map((item, i) => (
                 <FadeIn key={i} delay={i * 200}>
@@ -442,8 +520,133 @@ export default function LandingPage() {
           </div>
         </section>
 
+
+        {/* PLANOS */}
+        <section id="planos" className="bg-slate-50 px-6 py-24">
+          <div className="mx-auto max-w-6xl">
+            <FadeIn className="mb-16 text-center">
+              {CAMPANHA_ATIVA && (
+                <div className="mx-auto mb-6 flex w-fit items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-800">
+                  <Sparkles className="h-4 w-4" />
+                  Implante agora e venda na Black Friday e no Natal
+                </div>
+              )}
+              <h2 className="text-3xl font-bold tracking-tight md:text-5xl">
+                Planos simples, sem comissão por venda
+              </h2>
+              <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
+                Você paga a implantação uma vez, escolhe o plano mensal e a
+                gente entrega sua loja pronta para vender.
+              </p>
+            </FadeIn>
+
+            {/* IMPLANTAÇÃO */}
+            <FadeIn className="mb-8">
+              <div className="grid grid-cols-1 gap-8 rounded-3xl bg-slate-900 p-8 text-white shadow-xl md:grid-cols-[1fr_auto] md:items-center md:p-10">
+                <div>
+                  <p className="text-primary text-sm font-semibold tracking-wider uppercase">
+                    Passo 1 · Implantação
+                  </p>
+                  <h3 className="mt-2 text-2xl font-bold md:text-3xl">
+                    Sua loja montada por nós
+                  </h3>
+                  <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {IMPLANTACAO.itens.map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-start gap-3 text-slate-300"
+                      >
+                        <CheckCircle2 className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="text-center md:text-right">
+                  <p className="text-sm text-slate-400">pagamento único</p>
+                  <p className="text-5xl font-black">
+                    <span className="align-top text-2xl">R$</span>
+                    {IMPLANTACAO.preco}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    ou parcelado no cartão
+                  </p>
+                </div>
+              </div>
+            </FadeIn>
+
+            {/* MENSALIDADE */}
+            <p className="mb-6 text-center text-sm font-semibold tracking-wider text-slate-500 uppercase">
+              Passo 2 · Escolha seu plano mensal
+            </p>
+            <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-2">
+              {PLANOS.map((plano, i) => (
+                <FadeIn key={plano.nome} delay={i * 150}>
+                  <div
+                    className={`relative flex h-full flex-col rounded-3xl border bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+                      plano.destaque
+                        ? "border-primary ring-primary/20 ring-4"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    {plano.destaque && (
+                      <span className="bg-primary absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-xs font-bold text-white">
+                        Mais escolhido
+                      </span>
+                    )}
+                    <h3 className="text-2xl font-bold">{plano.nome}</h3>
+                    <p className="text-muted-foreground mt-2">
+                      {plano.descricao}
+                    </p>
+                    <p className="mt-6 text-5xl font-black">
+                      <span className="align-top text-2xl">R$</span>
+                      {plano.preco}
+                      <span className="text-lg font-medium text-slate-500">
+                        /mês
+                      </span>
+                    </p>
+                    <ul className="mt-8 flex-1 space-y-4">
+                      {plano.itens.map((item) => (
+                        <li
+                          key={item}
+                          className="flex items-start gap-3 font-medium text-slate-700"
+                        >
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      size="lg"
+                      variant={plano.destaque ? "default" : "outline"}
+                      className="mt-8 w-full gap-2 rounded-full py-6 text-base font-bold"
+                      asChild
+                    >
+                      <a
+                        href={whatsapp(
+                          `Olá! Quero a implantação da minha loja na Bewear com o plano ${plano.nome}.`,
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                        Quero o {plano.nome}
+                      </a>
+                    </Button>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+
+            <p className="text-muted-foreground mt-10 text-center text-sm">
+              A Bewear não cobra comissão sobre suas vendas. Você paga só a taxa
+              do Mercado Pago em cada pagamento.
+            </p>
+          </div>
+        </section>
+
         {/* FAQ */}
-        <section id="faq" className="bg-slate-50 px-6 py-24">
+        <section id="faq" className="bg-white px-6 py-24">
           <div className="mx-auto max-w-3xl">
             <FadeIn className="mb-12 text-center">
               <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
@@ -457,12 +660,20 @@ export default function LandingPage() {
             <div className="space-y-4">
               {[
                 {
+                  q: "O que está incluso na implantação?",
+                  a: "Montamos a loja com a sua identidade visual, cadastramos até 50 produtos com cores, tamanhos e estoque, configuramos Pix e cartão no seu Mercado Pago, deixamos o link pronto para a bio do Instagram e fazemos um treinamento de 30 minutos com você.",
+                },
+                {
+                  q: "Qual a diferença entre o Essencial e o Completo?",
+                  a: "No Essencial, você mesma cadastra os produtos novos pelo painel. No Completo, a gente cadastra cada coleção nova para você, troca os banners nas datas comemorativas e seu suporte tem prioridade.",
+                },
+                {
                   q: "Preciso saber programar para ter minha loja?",
                   a: "Não! Nós cuidamos de toda a parte técnica, servidores e atualizações. Você só precisará cadastrar seus produtos e começar a vender usando nosso painel super simples.",
                 },
                 {
                   q: "Quais são as taxas por venda?",
-                  a: "A Bewear não cobra comissões abusivas por venda como os marketplaces. Você paga apenas a taxa padrão do gateway de pagamento (PIX ou Cartão) que escolhermos configurar para você.",
+                  a: "A Bewear não cobra comissão sobre as suas vendas. Você paga apenas a taxa padrão do Mercado Pago em cada pagamento (Pix ou cartão).",
                 },
                 {
                   q: "Posso usar meu próprio domínio?",
@@ -492,7 +703,7 @@ export default function LandingPage() {
         </section>
 
         {/* CTA FINAL */}
-        <section className="bg-white px-6 py-24">
+        <section className="bg-slate-50 px-6 py-24">
           <FadeIn>
             <div className="bg-primary relative mx-auto max-w-5xl overflow-hidden rounded-[3rem] px-6 py-24 text-center text-white shadow-2xl">
               <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
@@ -500,11 +711,12 @@ export default function LandingPage() {
 
               <div className="relative z-10 mx-auto max-w-3xl space-y-8">
                 <h2 className="text-4xl font-black tracking-tight md:text-5xl">
-                  Pronto para profissionalizar suas vendas?
+                  {CAMPANHA_ATIVA
+                    ? "Sua loja no ar antes da Black Friday?"
+                    : "Pronto para profissionalizar suas vendas?"}
                 </h2>
                 <p className="text-primary-foreground/90 text-xl">
-                  Nós configuramos a estrutura, você foca no que faz de melhor:
-                  vender.
+                  Nós montamos a loja, você foca no que faz de melhor: vender.
                 </p>
                 <Button
                   variant="secondary"
@@ -575,6 +787,14 @@ export default function LandingPage() {
                     className="hover:text-primary transition-colors"
                   >
                     Funcionalidades
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#planos"
+                    className="hover:text-primary transition-colors"
+                  >
+                    Planos
                   </a>
                 </li>
                 <li>
