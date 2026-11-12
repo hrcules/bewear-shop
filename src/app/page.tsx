@@ -73,10 +73,12 @@ function whatsapp(mensagem: string) {
 }
 
 const IMPLANTACAO = {
-  preco: "497",
+  preco: "297",
+  precoAntigo: "497",
+  parcelas: "3x de R$ 99",
   itens: [
     "Loja montada com a identidade da sua marca",
-    "Cadastro de até 50 produtos com cores, tamanhos e estoque",
+    "Cadastro de até 30 produtos com cores, tamanhos e estoque",
     "Pix e cartão configurados no seu Mercado Pago",
     "Link pronto para a bio do Instagram e botão de WhatsApp",
     "Treinamento de 30 minutos para você usar o painel",
@@ -563,13 +565,24 @@ export default function LandingPage() {
                   </ul>
                 </div>
                 <div className="text-center md:text-right">
-                  <p className="text-sm text-slate-400">pagamento único</p>
+                  {CAMPANHA_ATIVA && (
+                    <span className="mb-2 inline-block rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-900">
+                      Preço de lançamento
+                    </span>
+                  )}
+                  <p className="text-sm text-slate-400">
+                    pagamento único · de{" "}
+                    <span className="line-through">
+                      R$ {IMPLANTACAO.precoAntigo}
+                    </span>{" "}
+                    por
+                  </p>
                   <p className="text-5xl font-black">
                     <span className="align-top text-2xl">R$</span>
                     {IMPLANTACAO.preco}
                   </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    ou parcelado no cartão
+                  <p className="mt-1 text-base font-semibold text-white">
+                    ou {IMPLANTACAO.parcelas} no cartão
                   </p>
                 </div>
               </div>
@@ -661,7 +674,7 @@ export default function LandingPage() {
               {[
                 {
                   q: "O que está incluso na implantação?",
-                  a: "Montamos a loja com a sua identidade visual, cadastramos até 50 produtos com cores, tamanhos e estoque, configuramos Pix e cartão no seu Mercado Pago, deixamos o link pronto para a bio do Instagram e fazemos um treinamento de 30 minutos com você.",
+                  a: "Montamos a loja com a sua identidade visual, cadastramos até 30 produtos com cores, tamanhos e estoque, configuramos Pix e cartão no seu Mercado Pago, deixamos o link pronto para a bio do Instagram e fazemos um treinamento de 30 minutos com você.",
                 },
                 {
                   q: "Qual a diferença entre o Essencial e o Completo?",
