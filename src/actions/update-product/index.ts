@@ -1,10 +1,10 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db";
-import { productTable } from "@/db/schema";
+import { categoryTable, productTable } from "@/db/schema";
 import { tenantOwnerAction } from "@/lib/safe-action"; // ✅ O Escudo
 
 export const updateProductDetailsAction = tenantOwnerAction<
@@ -31,6 +31,18 @@ export const updateProductDetailsAction = tenantOwnerAction<
     throw new Error("Produto inválido ou sem permissão.");
   }
 
+  // 🛡️ A categoria precisa ser desta loja
+  const category = await db.query.categoryTable.findFirst({
+    where: and(
+      eq(categoryTable.id, categoryId),
+      eq(categoryTable.storeId, storeId),
+    ),
+  });
+
+  if (!category) {
+    throw new Error("Categoria inválida ou sem permissão.");
+  }
+
   await db
     .update(productTable)
     .set({
@@ -39,7 +51,9 @@ export const updateProductDetailsAction = tenantOwnerAction<
       categoryId,
       updatedAt: new Date(),
     })
-    .where(eq(productTable.id, productId));
+    .where(
+      and(eq(productTable.id, productId), eq(productTable.storeId, storeId)),
+    );
 
   revalidatePath(`/admin/products/${productId}`);
 
