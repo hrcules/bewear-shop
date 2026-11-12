@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 import ReactQueryProvider from "@/providers/react-query";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm"; // ✅ Importação para a consulta do Drizzle
 
 import NotificationBell from "@/components/common/notification-bell";
-import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { getTenantStore } from "@/lib/tentat";
 import { db } from "@/db"; // ✅ Importação do banco de dados
 import { storeTable } from "@/db/schema"; // ✅ Importação da tabela da loja
 
+import { AdminNav } from "./components/admin-nav";
 import { MobileSidebar } from "./components/mobile-sidebar";
 import { AcceptTermsDialog } from "./components/accept-terms-dialog";
 
@@ -98,43 +97,7 @@ export default async function AdminLayout({
             </div>
             <NotificationBell />
           </div>
-          <nav className="space-y-2">
-            <Button
-              variant="ghost"
-              className="text-muted-foreground hover:text-primary w-full justify-start"
-              asChild
-            >
-              <Link href="/admin/">Dashboard</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              className="text-muted-foreground hover:text-primary w-full justify-start"
-              asChild
-            >
-              <Link href="/admin/products">Produtos</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              className="text-muted-foreground hover:text-primary w-full justify-start"
-              asChild
-            >
-              <Link href="/admin/categories">Categorias</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              className="text-muted-foreground hover:text-primary w-full justify-start"
-              asChild
-            >
-              <Link href="/admin/orders">Pedidos</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              className="text-muted-foreground hover:text-primary w-full justify-start"
-              asChild
-            >
-              <Link href="/admin/settings">Configurações</Link>
-            </Button>
-          </nav>
+          <AdminNav />
         </aside>
 
         {/* === CONTEÚDO PRINCIPAL === */}

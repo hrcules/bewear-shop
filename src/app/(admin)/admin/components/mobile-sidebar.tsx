@@ -1,7 +1,6 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+import { AdminNav } from "./admin-nav";
+
 interface MobileSidebarProps {
   storeName: string;
   colorPrimary: string;
@@ -20,14 +21,6 @@ interface MobileSidebarProps {
 
 export function MobileSidebar({ storeName, colorPrimary }: MobileSidebarProps) {
   const [open, setOpen] = useState(false);
-
-  const navLinks = [
-    { href: "/admin/", label: "Dashboard" },
-    { href: "/admin/products", label: "Produtos" },
-    { href: "/admin/categories", label: "Categorias" },
-    { href: "/admin/orders", label: "Pedidos" },
-    { href: "/admin/settings", label: "Configurações" },
-  ];
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -56,19 +49,7 @@ export function MobileSidebar({ storeName, colorPrimary }: MobileSidebarProps) {
           </SheetTitle>
         </SheetHeader>
 
-        <nav className="flex flex-col gap-2">
-          {navLinks.map((link) => (
-            <Button
-              key={link.href}
-              variant="ghost"
-              className="text-muted-foreground hover:text-primary w-full justify-start"
-              asChild
-              onClick={() => setOpen(false)}
-            >
-              <Link href={link.href}>{link.label}</Link>
-            </Button>
-          ))}
-        </nav>
+        <AdminNav onNavigate={() => setOpen(false)} />
       </SheetContent>
     </Sheet>
   );
